@@ -1,0 +1,66 @@
+{
+  "name": "ccview",
+  "displayName": "CCView",
+  "description": "Quantum chemistry output file viewer with cclib and miew",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:ccview.openViewer",
+    "onCommand:ccview.parseFile",
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "ccview.openViewer",
+        "title": "Open CCView",
+        "category": "CCView"
+      },
+      {
+        "command": "ccview.parseFile",
+        "title": "Parse Quantum Chemistry File",
+        "category": "CCView"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "ccview.openViewer",
+          "group": "navigation",
+          "when": "resourceExtname == .log || resourceExtname == .out"
+        }
+      ]
+    },
+    "files.associations": {
+      "*.log": "plaintext",
+      "*.out": "plaintext"
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/node": "16.x",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "xterm": "^5.3.0",
+    "xterm-addon-fit": "^0.8.0",
+    "xterm-addon-web-links": "^0.9.0"
+  }
+}
