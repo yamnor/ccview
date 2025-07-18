@@ -35,71 +35,33 @@ class QuantumChemistryParser:
     """Parser for quantum chemistry output files using cclib"""
     
     def __init__(self):
-        self.supported_formats = {
-            'gaussian': ['.log', '.out'],
-            'gamess': ['.log', '.out'],
-            'gamessuk': ['.log', '.out'],
-            'nwchem': ['.out'],
-            'orca': ['.out'],
-            'qchem': ['.out'],
-            'psi4': ['.out'],
-            'turbomole': ['.out'],
-            'molpro': ['.out'],
-            'molcas': ['.out'],
-            'adf': ['.out'],
-            'cfour': ['.out'],
-            'dalton': ['.out'],
-            'jaguar': ['.out'],
-            'mopac': ['.out'],
-            'xtb': ['.out']
-        }
+        pass
     
-    def detect_file_format(self, file_path: str) -> str:
-        """Detect the format of quantum chemistry output file"""
-        try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                content = f.read(2000)  # Read first 2000 characters
-                
-            # Check for characteristic strings
-            content_lower = content.lower()
-            
-            if 'gaussian' in content_lower or 'g09' in content or 'g16' in content:
-                return 'gaussian'
-            elif 'gamess' in content_lower and 'uk' not in content_lower:
-                return 'gamess'
-            elif 'gamess-uk' in content_lower or 'gamessuk' in content_lower:
-                return 'gamessuk'
-            elif 'nwchem' in content_lower:
-                return 'nwchem'
-            elif 'orca' in content_lower:
-                return 'orca'
-            elif 'q-chem' in content_lower or 'qchem' in content_lower:
-                return 'qchem'
-            elif 'psi4' in content_lower:
-                return 'psi4'
-            elif 'turbomole' in content_lower:
-                return 'turbomole'
-            elif 'molpro' in content_lower:
-                return 'molpro'
-            elif 'molcas' in content_lower:
-                return 'molcas'
-            elif 'adf' in content_lower:
-                return 'adf'
-            elif 'cfour' in content_lower:
-                return 'cfour'
-            elif 'dalton' in content_lower:
-                return 'dalton'
-            elif 'jaguar' in content_lower:
-                return 'jaguar'
-            elif 'mopac' in content_lower:
-                return 'mopac'
-            elif 'xtb' in content_lower:
-                return 'xtb'
-            else:
-                return 'unknown'
-                
-        except Exception as e:
-            return f"error: {str(e)}"
+    def _get_format_from_cclib_data(self, data) -> str:
+        """Get format from cclib data object"""
+        class_name = type(data).__name__.lower()
+        
+        # Map cclib class names to format names
+        format_mapping = {
+            'gaussian': 'gaussian',
+            'gamess': 'gamess',
+            'gamessuk': 'gamessuk',
+            'nwchem': 'nwchem',
+            'orca': 'orca',
+            'qchem': 'qchem',
+            'psi4': 'psi4',
+            'turbomole': 'turbomole',
+            'molpro': 'molpro',
+            'molcas': 'molcas',
+            'adf': 'adf',
+            'cfour': 'cfour',
+            'dalton': 'dalton',
+            'jaguar': 'jaguar',
+            'mopac': 'mopac',
+            'xtb': 'xtb'
+        }
+        
+        return format_mapping.get(class_name, 'unknown')
     
     def parse_file(self, file_path: str) -> Dict[str, Any]:
         """Parse quantum chemistry output file and return structured data"""
@@ -117,7 +79,7 @@ class QuantumChemistryParser:
             result = {
                 'success': True,
                 'file_type': type(data).__name__,
-                'detected_format': self.detect_file_format(file_path),
+                'detected_format': self._get_format_from_cclib_data(data),
                 'molecule': self._extract_molecule_data(data),
                 'energies': self._extract_energy_data(data),
                 'vibrations': self._extract_vibration_data(data),
@@ -363,11 +325,19 @@ def main():
         
     elif command == 'detect' and len(sys.argv) >= 3:
         file_path = sys.argv[2]
-        format_type = parser.detect_file_format(file_path)
-        print(json.dumps({
-            'success': True,
-            'detected_format': format_type
-        }))
+        try:
+            # Use cclib to detect format
+            data = ccread(file_path)
+            format_type = parser._get_format_from_cclib_data(data)
+            print(json.dumps({
+                'success': True,
+                'detected_format': format_type
+            }))
+        except Exception as e:
+            print(json.dumps({
+                'success': False,
+                'error': str(e)
+            }))
         
     else:
         print(json.dumps({
