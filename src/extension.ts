@@ -36,36 +36,43 @@ export function activate(context: vscode.ExtensionContext) {
 
             const filePath = activeEditor.document.uri.fsPath;
             
-            // Check if file is supported
-            const isSupported = await fileDetector.isValidFile(filePath);
-            if (!isSupported) {
-                vscode.window.showErrorMessage('File format not supported for quantum chemistry parsing');
+            // Detect file type
+            const fileType = await fileDetector.detectFileType(filePath);
+            if (!fileType.isValid) {
+                vscode.window.showErrorMessage(fileType.error || 'File format not supported');
                 return;
             }
 
             // Show progress
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
-                title: "Parsing quantum chemistry file...",
+                title: "Opening molecular viewer...",
                 cancellable: false
             }, async (progress) => {
                 progress.report({ increment: 0 });
 
-                // Parse file
-                progress.report({ increment: 30, message: "Parsing file with cclib..." });
-                const result = await parserInterface.parseFile(filePath);
-                
-                if (!result.success) {
-                    throw new Error(result.error || 'Failed to parse file');
-                }
-
-                progress.report({ increment: 50, message: "Opening viewer..." });
-                
                 // Set current file for terminal commands
                 terminalManager.setCurrentFile(filePath);
-                
-                // Open WebView with parsed data
-                await webViewManager.createViewer(result);
+
+                // Process based on file type
+                if (fileType.fileType?.parser === 'direct') {
+                    // Direct loading for PDB, CIF, XYZ files
+                    progress.report({ increment: 30, message: "Loading file directly..." });
+                    await webViewManager.createDirectViewer(filePath);
+                } else {
+                    // cclib parsing for quantum chemistry files
+                    progress.report({ increment: 30, message: "Parsing file with cclib..." });
+                    const result = await parserInterface.parseFile(filePath);
+                    
+                    if (!result.success) {
+                        throw new Error(result.error || 'Failed to parse file');
+                    }
+
+                    progress.report({ increment: 50, message: "Opening viewer..." });
+                    
+                    // Open WebView with parsed data
+                    await webViewManager.createViewer(result);
+                }
                 
                 progress.report({ increment: 100 });
             });
@@ -83,6 +90,7 @@ export function activate(context: vscode.ExtensionContext) {
                 canSelectFolders: false,
                 canSelectMany: false,
                 filters: {
+                    'Molecular Structure Files': ['pdb', 'cif', 'xyz'],
                     'Quantum Chemistry Files': ['log', 'out']
                 }
             });
@@ -93,36 +101,43 @@ export function activate(context: vscode.ExtensionContext) {
 
             const filePath = uris[0].fsPath;
             
-            // Check if file is supported
-            const isSupported = await fileDetector.isValidFile(filePath);
-            if (!isSupported) {
-                vscode.window.showErrorMessage('File format not supported for quantum chemistry parsing');
+            // Detect file type
+            const fileType = await fileDetector.detectFileType(filePath);
+            if (!fileType.isValid) {
+                vscode.window.showErrorMessage(fileType.error || 'File format not supported');
                 return;
             }
 
             // Show progress
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
-                title: "Parsing quantum chemistry file...",
+                title: "Opening molecular viewer...",
                 cancellable: false
             }, async (progress) => {
                 progress.report({ increment: 0 });
 
-                // Parse file
-                progress.report({ increment: 30, message: "Parsing file with cclib..." });
-                const result = await parserInterface.parseFile(filePath);
-                
-                if (!result.success) {
-                    throw new Error(result.error || 'Failed to parse file');
-                }
-
-                progress.report({ increment: 50, message: "Opening viewer..." });
-                
                 // Set current file for terminal commands
                 terminalManager.setCurrentFile(filePath);
-                
-                // Open WebView with parsed data
-                await webViewManager.createViewer(result);
+
+                // Process based on file type
+                if (fileType.fileType?.parser === 'direct') {
+                    // Direct loading for PDB, CIF, XYZ files
+                    progress.report({ increment: 30, message: "Loading file directly..." });
+                    await webViewManager.createDirectViewer(filePath);
+                } else {
+                    // cclib parsing for quantum chemistry files
+                    progress.report({ increment: 30, message: "Parsing file with cclib..." });
+                    const result = await parserInterface.parseFile(filePath);
+                    
+                    if (!result.success) {
+                        throw new Error(result.error || 'Failed to parse file');
+                    }
+
+                    progress.report({ increment: 50, message: "Opening viewer..." });
+                    
+                    // Open WebView with parsed data
+                    await webViewManager.createViewer(result);
+                }
                 
                 progress.report({ increment: 100 });
             });
@@ -133,7 +148,7 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     // Register file system watcher for automatic detection
-    const fileWatcher = vscode.workspace.createFileSystemWatcher('**/*.{log,out}');
+    const fileWatcher = vscode.workspace.createFileSystemWatcher('**/*.{log,out,pdb,cif,xyz}');
     
     const onDidCreate = fileWatcher.onDidCreate(async (uri) => {
         // Optional: Auto-detect and show notification for new quantum chemistry files

@@ -40,7 +40,10 @@ export class FileDetector {
         { name: 'DALTON', extensions: ['.out'], parser: 'dalton', priority: 13 },
         { name: 'Jaguar', extensions: ['.out'], parser: 'jaguar', priority: 14 },
         { name: 'MOPAC', extensions: ['.out'], parser: 'mopac', priority: 15 },
-        { name: 'XTB', extensions: ['.out'], parser: 'xtb', priority: 16 }
+        { name: 'XTB', extensions: ['.out'], parser: 'xtb', priority: 16 },
+        { name: 'PDB', extensions: ['.pdb'], parser: 'direct', priority: 17 },
+        { name: 'CIF', extensions: ['.cif'], parser: 'direct', priority: 18 },
+        { name: 'XYZ', extensions: ['.xyz'], parser: 'direct', priority: 19 }
     ];
 
     /**

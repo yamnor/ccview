@@ -33,13 +33,16 @@
         {
           "command": "ccview.openViewer",
           "group": "navigation",
-          "when": "resourceExtname == .log || resourceExtname == .out"
+          "when": "resourceExtname == .log || resourceExtname == .out || resourceExtname == .pdb || resourceExtname == .cif || resourceExtname == .xyz"
         }
       ]
     },
     "files.associations": {
       "*.log": "plaintext",
-      "*.out": "plaintext"
+      "*.out": "plaintext",
+      "*.pdb": "plaintext",
+      "*.cif": "plaintext",
+      "*.xyz": "plaintext"
     }
   },
   "scripts": {
