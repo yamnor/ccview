@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { ParserInterface } from './parserInterface';
 
 /**
@@ -200,20 +201,42 @@ export class TerminalManager {
         if (args.length < 1) {
             outputs.push({
                 type: 'stderr',
-                content: 'Usage: ccwrite <format> [file_path] [output_path]',
+                content: 'Usage: ccwrite <format> [output_path] or ccwrite <format> <file_path> <output_path>',
                 timestamp
             });
             return outputs;
         }
 
         const format = args[0];
-        const filePath = args[1] || this.currentFile;
-        const outputPath = args[2];
+        let filePath: string;
+        let outputPath: string | undefined;
+
+        // Parse arguments based on number of arguments
+        if (args.length === 1) {
+            // ccwrite xyz
+            filePath = this.currentFile || '';
+            outputPath = undefined;
+        } else if (args.length === 2) {
+            // ccwrite xyz example.xyz
+            filePath = this.currentFile || '';
+            outputPath = this.resolveOutputPath(args[1]);
+        } else if (args.length === 3) {
+            // ccwrite xyz input.log example.xyz
+            filePath = args[1];
+            outputPath = this.resolveOutputPath(args[2]);
+        } else {
+            outputs.push({
+                type: 'stderr',
+                content: 'Too many arguments. Usage: ccwrite <format> [output_path] or ccwrite <format> <file_path> <output_path>',
+                timestamp
+            });
+            return outputs;
+        }
 
         if (!filePath) {
             outputs.push({
                 type: 'stderr',
-                content: 'No file specified. Use: ccwrite <format> <file_path> [output_path]',
+                content: 'No file specified. Use: ccwrite <format> [output_path] or ccwrite <format> <file_path> <output_path>',
                 timestamp
             });
             return outputs;
@@ -223,11 +246,22 @@ export class TerminalManager {
             const result = await this.parserInterface.executeCcwrite(filePath, format, outputPath);
             
             if (result.success) {
-                outputs.push({
-                    type: 'stdout',
-                    content: `Successfully converted to ${format} format${outputPath ? `: ${outputPath}` : ''}`,
-                    timestamp
-                });
+                if (outputPath) {
+                    // File saved
+                    outputs.push({
+                        type: 'stdout',
+                        content: `Successfully converted to ${format} format`,
+                        timestamp
+                    });
+                } else {
+                    // Content display
+                    const content = result.output || 'No content available';
+                    outputs.push({
+                        type: 'stdout',
+                        content: content,
+                        timestamp
+                    });
+                }
             } else {
                 outputs.push({
                     type: 'stderr',
@@ -288,7 +322,8 @@ export class TerminalManager {
     private getHelpOutput(): TerminalOutput {
         const helpText = 'CCView Terminal Commands:\n\n' +
             '  ccget <property_name> [file_path]    - Extract property from quantum chemistry file\n' +
-            '  ccwrite <format> [file_path] [output] - Convert file to specified format\n' +
+            '  ccwrite <format> [output_path]       - Convert current file to specified format\n' +
+            '  ccwrite <format> <file_path> <output> - Convert file to specified format\n' +
             '  miew <script_command>                - Execute miew viewer script\n' +
             '  help                                 - Show this help message\n' +
             '  clear                                - Clear terminal screen\n\n' +
@@ -301,6 +336,8 @@ export class TerminalManager {
             '  ccget atomnos\n' +
             '  ccget scfenergies\n' +
             '  ccwrite xyz\n' +
+            '  ccwrite xyz output.xyz\n' +
+            '  ccwrite xyz input.log output.xyz\n' +
             '  miew rep 0 mode BS';
 
         return {
@@ -339,5 +376,30 @@ export class TerminalManager {
     clearHistory(): void {
         this.commandHistory = [];
         this.historyIndex = 0;
+    }
+
+    /**
+     * Resolve output path to ensure it's writable
+     */
+    private resolveOutputPath(outputPath: string): string {
+        // If outputPath is already an absolute path, return as is
+        if (path.isAbsolute(outputPath)) {
+            return outputPath;
+        }
+
+        // Get workspace root directory
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (workspaceFolders && workspaceFolders.length > 0) {
+            // Use the first workspace folder as the base directory
+            return path.join(workspaceFolders[0].uri.fsPath, outputPath);
+        }
+
+        // If no workspace, use the directory of the current file
+        if (this.currentFile) {
+            return path.join(path.dirname(this.currentFile), outputPath);
+        }
+
+        // Fallback to current working directory
+        return path.resolve(outputPath);
     }
 } 
