@@ -87,10 +87,8 @@ export class WebViewManager {
      */
     async sendMessage(message: WebViewMessage): Promise<void> {
         if (this.currentPanel) {
-            console.log('WebViewManager: Sending message to WebView:', message);
             this.currentPanel.webview.postMessage(message);
         } else {
-            console.error('WebViewManager: No current panel available for sending message');
         }
     }
 
@@ -98,23 +96,18 @@ export class WebViewManager {
      * Handle messages from WebView
      */
     private handleWebViewMessage(message: WebViewMessage): void {
-        console.log('WebViewManager: Received message from WebView:', message);
         
         switch (message.type) {
             case 'command':
-                console.log('WebViewManager: Handling command:', message.payload);
                 this.handleCommand(message.payload);
                 break;
             case 'error':
-                console.error('WebViewManager: Error from WebView:', message.payload);
                 vscode.window.showErrorMessage(`CCView Error: ${message.payload}`);
                 break;
             case 'status':
-                console.log('WebViewManager: Status from WebView:', message.payload);
                 vscode.window.showInformationMessage(`CCView: ${message.payload}`);
                 break;
             default:
-                console.log('WebViewManager: Unknown message type:', message.type);
         }
     }
 
@@ -122,20 +115,15 @@ export class WebViewManager {
      * Handle commands from WebView
      */
     private async handleCommand(command: any): Promise<void> {
-        console.log('WebViewManager: Received command from WebView:', command);
         
         if (this.terminalManager && command.type === 'terminal') {
             try {
-                console.log('WebViewManager: Processing terminal command:', command.command);
                 const terminalCommand = this.terminalManager.parseCommand(command.command);
-                console.log('WebViewManager: Parsed command:', terminalCommand);
                 
                 const outputs = await this.terminalManager.executeCommand(terminalCommand);
-                console.log('WebViewManager: Command outputs:', outputs);
                 
                 // Send outputs back to WebView
                 for (const output of outputs) {
-                    console.log('WebViewManager: Sending output to WebView:', output);
                     await this.sendMessage({
                         type: 'terminal_output',
                         payload: output,
@@ -143,7 +131,6 @@ export class WebViewManager {
                     });
                 }
             } catch (error) {
-                console.error('WebViewManager: Command execution error:', error);
                 await this.sendMessage({
                     type: 'terminal_output',
                     payload: {
@@ -155,7 +142,6 @@ export class WebViewManager {
                 });
             }
         } else {
-            console.log('WebViewManager: Command not handled - terminalManager:', !!this.terminalManager, 'command.type:', command?.type);
         }
     }
 
@@ -496,7 +482,6 @@ export class WebViewManager {
                     loadingElement.style.display = 'none';
                     
                 } catch (error) {
-                    console.error('Initialization error:', error);
                     loadingElement.style.display = 'none';
                     errorElement.textContent = 'Error initializing viewer: ' + error.message;
                     errorElement.style.display = 'block';
@@ -651,7 +636,6 @@ export class WebViewManager {
                 terminal.writeln('');
                 terminal.write('\x1b[1;32m>\x1b[0m ');
                 
-                console.log('Terminal initialized successfully');
             }
             
             // Setup event listeners
@@ -720,7 +704,6 @@ export class WebViewManager {
             // Message handling for VS Code communication
             window.addEventListener('message', event => {
                 const message = event.data;
-                console.log('Received message from VS Code:', message);
                 
                 switch (message.type) {
                     case 'command':
@@ -733,7 +716,6 @@ export class WebViewManager {
                         handleTerminalOutput(message.payload);
                         break;
                     default:
-                        console.log('Unknown message type:', message.type);
                 }
             });
             
@@ -766,19 +748,17 @@ export class WebViewManager {
             // Execute terminal command
             async function executeTerminalCommand(command) {
                 if (!command.trim()) {
+                    // 空のコマンドの場合はプロンプトのみ表示
+                    terminal.write('\x1b[1;32m>\x1b[0m ');
                     return;
                 }
-                
-                console.log('Executing terminal command:', command);
                 
                 // Check if it's a miew command
                 if (command.toLowerCase().startsWith('miew ')) {
                     const miewCommand = command.substring(5); // Remove 'miew ' prefix
-                    console.log('Executing miew script:', miewCommand);
                     executeMiewScript(miewCommand);
                 } else {
                     // Send command to VS Code extension
-                    console.log('Sending command to VS Code extension:', command);
                     sendMessage('command', {
                         type: 'terminal',
                         command: command
@@ -823,19 +803,16 @@ export class WebViewManager {
             
             // Handle commands from VS Code
             function handleCommand(command) {
-                console.log('Received command:', command);
                 // TODO: Implement command handling
             }
             
             // Handle data from VS Code
             function handleData(data) {
-                console.log('Received data:', data);
                 // TODO: Implement data handling
             }
             
             // Handle terminal output from VS Code
             function handleTerminalOutput(output) {
-                console.log('Handling terminal output:', output);
                 if (terminal) {
                     if (output.type === 'stdout') {
                         // Split content by newlines and write each line separately
@@ -855,7 +832,6 @@ export class WebViewManager {
                     // Add prompt after all output is complete
                     terminal.write('\x1b[1;32m>\x1b[0m ');
                 } else {
-                    console.error('Terminal not available for output');
                 }
             }
             
@@ -865,14 +841,12 @@ export class WebViewManager {
             // Send message to VS Code
             function sendMessage(type, payload) {
                 try {
-                    console.log('Sending message to VS Code:', { type, payload });
                     vscode.postMessage({
                         type: type,
                         payload: payload,
                         timestamp: Date.now()
                     });
                 } catch (error) {
-                    console.error('Error sending message to VS Code:', error);
                     // Fallback: try to use window.vscode if available
                     if (window.vscode) {
                         try {
@@ -882,7 +856,6 @@ export class WebViewManager {
                                 timestamp: Date.now()
                             });
                         } catch (fallbackError) {
-                            console.error('Fallback message sending also failed:', fallbackError);
                         }
                     }
                 }
