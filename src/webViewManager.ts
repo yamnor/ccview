@@ -526,7 +526,7 @@ export class WebViewManager {
                     // Start rendering
                     viewer.run();
                     
-                    // 初期リサイズ処理
+                    // Initial resize handling
                     setTimeout(() => {
                         if (viewer && viewer._onResize) {
                             viewer._onResize();
@@ -543,7 +543,7 @@ export class WebViewManager {
                     throw new Error('Invalid molecular data structure');
                 }
                 
-                // coordinatesの最終ステップのみを使用
+                // Use only the final step of coordinates
                 const coordsArray = data.molecule.coordinates;
                 const lastCoords = Array.isArray(coordsArray) && coordsArray.length > 0
                     ? coordsArray[coordsArray.length - 1]
@@ -651,7 +651,7 @@ export class WebViewManager {
                 // Reset view
                 resetViewButton.addEventListener('click', () => {
                     if (viewer) {
-                        viewer.resetView();  // 分子を保持したままカメラ位置リセット
+                        viewer.resetView();  // Reset camera position while keeping molecule
                     }
                 });
                 
@@ -664,7 +664,7 @@ export class WebViewManager {
                 toggleTerminalButton.addEventListener('click', () => {
                     terminalContainer.classList.toggle('active');
                     
-                    // ターミナル表示時にリサイズ処理を実行
+                    // Execute resize when terminal is shown
                     if (terminalContainer.classList.contains('active')) {
                         setTimeout(() => {
                             if (fitAddon) {
@@ -674,12 +674,12 @@ export class WebViewManager {
                     }
                 });
                 
-                // リサイズ処理の完全対応
+                // Complete resize handling
                 const resizeObserver = new ResizeObserver(() => {
                     if (viewer && viewer._onResize) {
                         viewer._onResize();
                     }
-                    // ターミナルのリサイズも処理
+                    // Handle terminal resize as well
                     if (terminalContainer.classList.contains('active') && fitAddon) {
                         fitAddon.fit();
                     }
@@ -748,7 +748,7 @@ export class WebViewManager {
             // Execute terminal command
             async function executeTerminalCommand(command) {
                 if (!command.trim()) {
-                    // 空のコマンドの場合はプロンプトのみ表示
+                    // Show prompt only for empty commands
                     terminal.write('\x1b[1;32m>\x1b[0m ');
                     return;
                 }
