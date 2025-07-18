@@ -75,6 +75,9 @@ class QuantumChemistryParser:
             # Parse file using cclib
             data = ccread(file_path)
             
+            # Get XYZ format string directly from cclib
+            xyz_content = data.writexyz()
+            
             # Convert to dictionary format
             result = {
                 'success': True,
@@ -84,7 +87,8 @@ class QuantumChemistryParser:
                 'energies': self._extract_energy_data(data),
                 'vibrations': self._extract_vibration_data(data),
                 'orbitals': self._extract_orbital_data(data),
-                'properties': self._extract_property_data(data)
+                'properties': self._extract_property_data(data),
+                'xyz_content': xyz_content  # Add XYZ content directly
             }
             
             return result

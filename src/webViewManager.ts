@@ -211,16 +211,6 @@ export class WebViewManager {
         const xtermFitUrl = 'https://unpkg.com/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js';
         const xtermWebLinksUrl = 'https://unpkg.com/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.js';
 
-        // Generate data loading script based on data source
-        const dataLoadingScript = options.dataSource === 'molecular' 
-            ? this.getMolecularDataScript(options.data as MolecularData)
-            : this.getDirectFileScript(options.data as string, options.filePath!);
-
-        // Generate terminal script based on hasTerminal flag
-        const terminalScript = options.hasTerminal 
-            ? this.getTerminalScript()
-            : '';
-
         // Build HTML content in parts to avoid template literal nesting issues
         const headContent = this.getHeadContent(miewCdnUrl, miewCssUrl, threeJsUrl, lodashUrl, xtermJsUrl, xtermCssUrl, xtermFitUrl, xtermWebLinksUrl, options.hasTerminal);
         const bodyContent = this.getBodyContent(options);
@@ -307,6 +297,41 @@ ${scriptContent}
             <div id="terminal"></div>
         </div>` : '';
 
+        // Check if this is a PDB file for additional representation options
+        const isPDBFile = options.dataSource === 'direct' && 
+                         options.filePath?.toLowerCase().endsWith('.pdb');
+
+        // Generate representation options based on file type
+        const representationOptions = isPDBFile ? `
+                        <option value="LC">Licorice</option>
+                        <option value="BS">Ball & Stick</option>
+                        <option value="VW">Van der Waals</option>
+                        <option value="LN">Lines</option>
+                        <option value="CA" selected>Cartoon</option>
+                        <option value="TU">Tube</option>` : `
+                        <option value="LC">Licorice</option>
+                        <option value="BS" selected>Ball & Stick</option>
+                        <option value="VW">Van der Waals</option>
+                        <option value="LN">Lines</option>`;
+
+        // Generate color options based on file type
+        const colorOptions = isPDBFile ? `
+                        <option value="EL">Element</option>
+                        <option value="CH">Chain</option>
+                        <option value="SS" selected>Structure</option>
+                        <option value="RE">Residue</option>
+                        <option value="UN">Uniform</option>` : `
+                        <option value="EL" selected>Element</option>`;
+
+        // Generate color control group based on file type
+        const colorControlGroup = isPDBFile ? `
+                <div class="control-group">
+                    <label>Color:</label>
+                    <select id="colorer">
+                        ${colorOptions}
+                    </select>
+                </div>` : '';
+
         return `<body>
     <div class="container">
         <div class="header">
@@ -314,12 +339,11 @@ ${scriptContent}
                 <div class="control-group">
                     <label>Style:</label>
                     <select id="representation">
-                        <option value="LC">Licorice</option>
-                        <option value="BS" selected>Ball & Stick</option>
-                        <option value="VW">Van der Waals</option>
-                        <option value="LN">Lines</option>
+                        ${representationOptions}
                     </select>
                 </div>
+                
+                ${colorControlGroup}
                 
                 <div class="control-group">
                     <button id="reset-view" class="icon-button" title="Reset View">
@@ -380,6 +404,11 @@ ${scriptContent}
         const terminalContainerVar = options.hasTerminal ? 'const terminalContainer = document.getElementById("terminal-container");' : '';
         const toggleTerminalButtonVar = options.hasTerminal ? 'const toggleTerminalButton = document.getElementById("toggle-terminal");' : '';
 
+        // Check if this is a PDB file for additional controls
+        const isPDBFile = options.dataSource === 'direct' && 
+                         options.filePath?.toLowerCase().endsWith('.pdb');
+        const colorerVar = isPDBFile ? 'const colorerSelect = document.getElementById("colorer");' : '';
+
         const molecularDataCheck = options.dataSource === 'molecular' ? `
                     // Check if molecular data is valid
                     if (!molecularData.success) {
@@ -395,49 +424,12 @@ ${scriptContent}
                     updateInfoPanel();` : '';
 
         const molecularDataLoad = options.dataSource === 'molecular' ? `
-                    // Convert molecular data directly to XYZ format
-                    const xyzContent = convertToXYZFormat(molecularData);
-                    
-                    // Load molecule
-                    await loadMolecule(xyzContent);` : `
+                    // Load molecule using XYZ content from cclib
+                    await loadMolecule(molecularData.xyz_content);` : `
                     // Load file directly
                     await loadFileDirectly();`;
 
         const molecularDataFunctions = options.dataSource === 'molecular' ? `
-            // Convert cclib data directly to XYZ format for miew
-            function convertToXYZFormat(data) {
-                if (!data.molecule || !data.molecule.atoms || !data.molecule.coordinates) {
-                    throw new Error('Invalid molecular data structure');
-                }
-                
-                const coordsArray = data.molecule.coordinates;
-                const lastCoords = Array.isArray(coordsArray) && coordsArray.length > 0
-                    ? coordsArray[coordsArray.length - 1]
-                    : [];
-                
-                let xyzContent = data.molecule.atoms.length + '\\n';
-                xyzContent += 'Generated by CCView\\n';
-                
-                for (let i = 0; i < data.molecule.atoms.length; i++) {
-                    const atomNum = data.molecule.atoms[i];
-                    const coords = lastCoords[i];
-                    const element = getElementSymbol(atomNum);
-                    
-                    xyzContent += \`\${element} \${coords ? coords[0].toFixed(6) : '0.000000'} \${coords ? coords[1].toFixed(6) : '0.000000'} \${coords ? coords[2].toFixed(6) : '0.000000'}\\n\`;
-                }
-                
-                return xyzContent;
-            }
-            
-            // Get element symbol from atomic number
-            function getElementSymbol(atomicNumber) {
-                const elements = [
-                    'H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne',
-                    'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca'
-                ];
-                return elements[atomicNumber - 1] || 'X';
-            }
-            
             // Load molecule into viewer
             async function loadMolecule(xyzContent) {
                 // Load into viewer with explicit format specification
@@ -546,6 +538,34 @@ ${scriptContent}
                     document.getElementById('file-format').textContent = molecularData.detected_format;
                 }
             }` : '';
+
+        // Generate event handlers based on file type
+        const representationEventHandler = isPDBFile ? `
+                // Representation change with colorer support
+                representationSelect.addEventListener('change', (e) => {
+                    if (viewer) {
+                        const mode = e.target.value;
+                        const colorer = colorerSelect ? colorerSelect.value : 'EL';
+                        viewer.rep(0, { mode: mode, colorer: colorer });
+                    }
+                });` : `
+                // Representation change
+                representationSelect.addEventListener('change', (e) => {
+                    if (viewer) {
+                        const mode = e.target.value;
+                        viewer.rep(0, { mode: mode });
+                    }
+                });`;
+
+        const colorerEventHandler = isPDBFile ? `
+                // Colorer change
+                colorerSelect.addEventListener('change', (e) => {
+                    if (viewer) {
+                        const mode = representationSelect.value;
+                        const colorer = e.target.value;
+                        viewer.rep(0, { mode: mode, colorer: colorer });
+                    }
+                });` : '';
 
         const terminalMessageHandling = options.hasTerminal ? `
             // Message handling for VS Code communication
@@ -728,6 +748,7 @@ ${scriptContent}
             const resetViewButton = document.getElementById('reset-view');
             const toggleInfoButton = document.getElementById('toggle-info');
             ${toggleTerminalButtonVar}
+            ${colorerVar}
             
             // Initialize the application
             async function initialize() {
@@ -773,8 +794,8 @@ ${scriptContent}
                         resolution: 'medium'
                     },
                     reps: [{
-                        mode: 'BS',
-                        colorer: 'EL',
+                        mode: '${isPDBFile ? 'CA' : 'BS'}',
+                        colorer: '${isPDBFile ? 'SS' : 'EL'}',
                         selector: 'all',
                         material: 'SF'
                     }]
@@ -782,6 +803,15 @@ ${scriptContent}
                 
                 if (viewer.init()) {
                     ${molecularDataLoad}
+                    
+                    // Set default representation for PDB files
+                    ${isPDBFile ? `
+                    // Apply default PDB representation (Cartoon + Secondary Structure)
+                    setTimeout(() => {
+                        if (viewer) {
+                            viewer.rep(0, { mode: 'CA', colorer: 'SS' });
+                        }
+                    }, 500);` : ''}
                     
                     // Start rendering
                     viewer.run();
@@ -803,13 +833,9 @@ ${scriptContent}
             
             // Setup event listeners
             function setupEventListeners() {
-                // Representation change
-                representationSelect.addEventListener('change', (e) => {
-                    if (viewer) {
-                        const mode = e.target.value;
-                        viewer.rep(0, { mode: mode });
-                    }
-                });
+                ${representationEventHandler}
+                
+                ${colorerEventHandler}
                 
                 // Reset view
                 resetViewButton.addEventListener('click', () => {
@@ -1040,264 +1066,11 @@ ${scriptContent}
         return baseStyles + terminalStyles;
     }
 
-    /**
-     * Get molecular data script
-     */
-    private getMolecularDataScript(molecularData: MolecularData): string {
-        return `
-        // Molecular data conversion functions
-        function convertToXYZFormat(data) {
-            if (!data.molecule || !data.molecule.atoms || !data.molecule.coordinates) {
-                throw new Error('Invalid molecular data structure');
-            }
-            
-            const coordsArray = data.molecule.coordinates;
-            const lastCoords = Array.isArray(coordsArray) && coordsArray.length > 0
-                ? coordsArray[coordsArray.length - 1]
-                : [];
-            
-            let xyzContent = data.molecule.atoms.length + '\\n';
-            xyzContent += 'Generated by CCView\\n';
-            
-            for (let i = 0; i < data.molecule.atoms.length; i++) {
-                const atomNum = data.molecule.atoms[i];
-                const coords = lastCoords[i];
-                const element = getElementSymbol(atomNum);
-                
-                xyzContent += \`\${element} \${coords ? coords[0].toFixed(6) : '0.000000'} \${coords ? coords[1].toFixed(6) : '0.000000'} \${coords ? coords[2].toFixed(6) : '0.000000'}\\n\`;
-            }
-            
-            return xyzContent;
-        }
-        
-        function getElementSymbol(atomicNumber) {
-            const elements = [
-                'H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne',
-                'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca'
-            ];
-            return elements[atomicNumber - 1] || 'X';
-        }
-        `;
-    }
+    
 
-    /**
-     * Get direct file script
-     */
-    private getDirectFileScript(fileContent: string, filePath: string): string {
-        return `
-        // Direct file loading function
-        async function loadFileDirectly() {
-            try {
-                if (!viewer) {
-                    throw new Error('Miew viewer not initialized');
-                }
-                
-                const fileContent = \`${fileContent}\`;
-                const fileType = '${this.getFileTypeFromExtension(filePath.split('.').pop()?.toLowerCase())}';
-                await viewer.load(fileContent, { 
-                    sourceType: 'immediate',
-                    fileType: fileType 
-                });
-                console.log('File loaded successfully');
-            } catch (error) {
-                console.error('File loading error:', error);
-                showError('Failed to load file: ' + error.message);
-            }
-        }
-        
-        function showError(message) {
-            const miewContainer = document.getElementById('miew-container');
-            miewContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--vscode-errorForeground);">' + message + '</div>';
-        }
-        `;
-    }
 
-    /**
-     * Get terminal script
-     */
-    private getTerminalScript(): string {
-        return `
-        // Terminal functionality
-        async function initializeTerminal() {
-            while (typeof Terminal === 'undefined') {
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            
-            terminal = new Terminal({
-                cursorBlink: true,
-                fontSize: 12,
-                fontFamily: 'Consolas, "Courier New", monospace',
-                rows: 18,
-                theme: {
-                    background: 'transparent',
-                    foreground: '#ffffff',
-                    cursor: '#ffffff',
-                    selection: 'rgba(38, 79, 120, 0.8)'
-                },
-                allowTransparency: true
-            });
-            
-            const fitAddon = new FitAddon.FitAddon();
-            const webLinksAddon = new WebLinksAddon.WebLinksAddon();
-            
-            terminal.loadAddon(fitAddon);
-            terminal.loadAddon(webLinksAddon);
-            
-            terminal.open(document.getElementById('terminal'));
-            fitAddon.fit();
-            
-            terminal.onData((data) => {
-                handleTerminalInput(data);
-            });
-            
-            window.addEventListener('resize', () => {
-                if (terminalContainer.classList.contains('active')) {
-                    fitAddon.fit();
-                }
-            });
-            
-            terminal.writeln('\\x1b[1;32mCCView Terminal\\x1b[0m');
-            terminal.writeln('Type \\x1b[1;33mhelp\\x1b[0m for available commands.');
-            terminal.writeln('');
-            terminal.write('\\x1b[1;32m>\\x1b[0m ');
-        }
-        
-        let currentLine = '';
-        
-        function handleTerminalInput(data) {
-            if (data === '\\r') {
-                terminal.writeln('');
-                executeTerminalCommand(currentLine);
-                currentLine = '';
-            } else if (data === '\\u007f') {
-                if (currentLine.length > 0) {
-                    currentLine = currentLine.slice(0, -1);
-                    terminal.write('\\b \\b');
-                }
-            } else if (data.charCodeAt(0) < 32) {
-                return;
-            } else {
-                currentLine += data;
-                terminal.write(data);
-            }
-        }
-        
-        async function executeTerminalCommand(command) {
-            if (!command.trim()) {
-                terminal.write('\\x1b[1;32m>\\x1b[0m ');
-                return;
-            }
-            
-            if (command.toLowerCase().startsWith('miew ')) {
-                const miewCommand = command.substring(5);
-                executeMiewScript(miewCommand);
-            } else {
-                sendMessage('command', {
-                    type: 'terminal',
-                    command: command
-                });
-            }
-        }
-        
-        function executeMiewScript(scriptCommand) {
-            if (viewer && typeof viewer.script === 'function') {
-                try {
-                    viewer.script(scriptCommand, 
-                        (str) => {
-                            if (terminal) {
-                                terminal.writeln(str);
-                                terminal.write('\\x1b[1;32m>\\x1b[0m ');
-                            }
-                        }, 
-                        (str) => {
-                            if (terminal) {
-                                terminal.writeln(\`\\x1b[1;31mError: \${str}\\x1b[0m\`);
-                                terminal.write('\\x1b[1;32m>\\x1b[0m ');
-                            }
-                        }
-                    );
-                } catch (err) {
-                    if (terminal) {
-                        terminal.writeln(\`\\x1b[1;31mError: \${err.message}\\x1b[0m\`);
-                        terminal.write('\\x1b[1;32m>\\x1b[0m ');
-                    }
-                }
-            } else {
-                if (terminal) {
-                    terminal.writeln('\\x1b[1;31mError: Miew viewer not available\\x1b[0m');
-                    terminal.write('\\x1b[1;32m>\\x1b[0m ');
-                }
-            }
-        }
-        
-        function handleCommand(command) {
-            // TODO: Implement command handling
-        }
-        
-        function handleData(data) {
-            // TODO: Implement data handling
-        }
-        
-        function handleTerminalOutput(output) {
-            if (terminal) {
-                if (output.type === 'stdout') {
-                    const lines = output.content.split('\\n');
-                    for (let i = 0; i < lines.length; i++) {
-                        if (i === lines.length - 1 && lines[i] === '') {
-                            break;
-                        }
-                        terminal.writeln(lines[i]);
-                    }
-                } else if (output.type === 'stderr') {
-                    terminal.writeln(\`\\x1b[1;31m\${output.content}\\x1b[0m\`);
-                } else if (output.type === 'error') {
-                    terminal.writeln(\`\\x1b[1;31mError: \${output.content}\\x1b[0m\`);
-                }
-                terminal.write('\\x1b[1;32m>\\x1b[0m ');
-            }
-        }
-        
-        const vscode = acquireVsCodeApi();
-        
-        function sendMessage(type, payload) {
-            try {
-                vscode.postMessage({
-                    type: type,
-                    payload: payload,
-                    timestamp: Date.now()
-                });
-            } catch (error) {
-                if (window.vscode) {
-                    try {
-                        window.vscode.postMessage({
-                            type: type,
-                            payload: payload,
-                            timestamp: Date.now()
-                        });
-                    } catch (fallbackError) {
-                    }
-                }
-            }
-        }
-        
-        window.addEventListener('message', event => {
-            const message = event.data;
-            
-            switch (message.type) {
-                case 'command':
-                    handleCommand(message.payload);
-                    break;
-                case 'data':
-                    handleData(message.payload);
-                    break;
-                case 'terminal_output':
-                    handleTerminalOutput(message.payload);
-                    break;
-                default:
-            }
-        });
-        `;
-    }
+
+    
 
     /**
      * Get WebView HTML content

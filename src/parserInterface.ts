@@ -45,6 +45,7 @@ export interface MolecularData {
         atom_charges?: { [key: string]: number[] };
         atom_spins?: { [key: string]: number[] };
     };
+    xyz_content?: string;  // XYZ format string from cclib
     error?: string;
     traceback?: string;
 }
