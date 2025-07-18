@@ -108,12 +108,41 @@ export class ParserInterface {
 
             const result = await this.executePythonCommand('ccget', [filePath, propertyName]);
             
-            return {
-                success: result.success,
-                output: result.output,
-                error: result.error,
-                executionTime: result.executionTime
-            };
+            if (result.success) {
+                // Parse the JSON response from Python
+                try {
+                    const parsedResult = JSON.parse(result.output);
+                    if (parsedResult.success) {
+                        return {
+                            success: true,
+                            output: parsedResult.value,
+                            error: undefined,
+                            executionTime: result.executionTime
+                        };
+                    } else {
+                        return {
+                            success: false,
+                            output: '',
+                            error: parsedResult.error || 'Unknown error from Python backend',
+                            executionTime: result.executionTime
+                        };
+                    }
+                } catch (parseError) {
+                    return {
+                        success: false,
+                        output: '',
+                        error: `Failed to parse Python response: ${parseError}`,
+                        executionTime: result.executionTime
+                    };
+                }
+            } else {
+                return {
+                    success: false,
+                    output: '',
+                    error: result.error,
+                    executionTime: result.executionTime
+                };
+            }
 
         } catch (error) {
             return {

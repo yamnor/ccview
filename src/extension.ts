@@ -3,6 +3,7 @@ import { FileDetector } from './fileDetector';
 import { ParserInterface } from './parserInterface';
 import { WebViewManager } from './webViewManager';
 import { PythonManager } from './pythonManager';
+import { TerminalManager } from './terminalManager';
 
 /**
  * CCView VS Code Extension
@@ -18,6 +19,10 @@ export function activate(context: vscode.ExtensionContext) {
     const pythonManager = new PythonManager();
     const parserInterface = new ParserInterface(pythonManager);
     const webViewManager = new WebViewManager(context.extensionUri);
+    const terminalManager = new TerminalManager(parserInterface);
+    
+    // Set terminal manager in web view manager
+    webViewManager.setTerminalManager(terminalManager);
 
     // Register commands
     const openViewerCommand = vscode.commands.registerCommand('ccview.openViewer', async () => {
@@ -55,6 +60,9 @@ export function activate(context: vscode.ExtensionContext) {
                 }
 
                 progress.report({ increment: 50, message: "Opening viewer..." });
+                
+                // Set current file for terminal commands
+                terminalManager.setCurrentFile(filePath);
                 
                 // Open WebView with parsed data
                 await webViewManager.createViewer(result);
@@ -109,6 +117,9 @@ export function activate(context: vscode.ExtensionContext) {
                 }
 
                 progress.report({ increment: 50, message: "Opening viewer..." });
+                
+                // Set current file for terminal commands
+                terminalManager.setCurrentFile(filePath);
                 
                 // Open WebView with parsed data
                 await webViewManager.createViewer(result);

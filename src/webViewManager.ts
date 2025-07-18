@@ -1,12 +1,13 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { MolecularData } from './parserInterface';
+import { TerminalManager, TerminalCommand, TerminalOutput } from './terminalManager';
 
 /**
  * WebView message types
  */
 export interface WebViewMessage {
-    type: 'data' | 'command' | 'error' | 'status';
+    type: 'data' | 'command' | 'error' | 'status' | 'terminal_output';
     payload: any;
     timestamp: number;
 }
@@ -22,9 +23,17 @@ export type MessageHandler = (message: WebViewMessage) => void;
 export class WebViewManager {
     private extensionUri: vscode.Uri;
     private currentPanel: vscode.WebviewPanel | undefined;
+    private terminalManager: TerminalManager | undefined;
 
     constructor(extensionUri: vscode.Uri) {
         this.extensionUri = extensionUri;
+    }
+
+    /**
+     * Set terminal manager
+     */
+    setTerminalManager(terminalManager: TerminalManager): void {
+        this.terminalManager = terminalManager;
     }
 
     /**
@@ -78,7 +87,10 @@ export class WebViewManager {
      */
     async sendMessage(message: WebViewMessage): Promise<void> {
         if (this.currentPanel) {
+            console.log('WebViewManager: Sending message to WebView:', message);
             this.currentPanel.webview.postMessage(message);
+        } else {
+            console.error('WebViewManager: No current panel available for sending message');
         }
     }
 
@@ -86,29 +98,65 @@ export class WebViewManager {
      * Handle messages from WebView
      */
     private handleWebViewMessage(message: WebViewMessage): void {
+        console.log('WebViewManager: Received message from WebView:', message);
+        
         switch (message.type) {
             case 'command':
+                console.log('WebViewManager: Handling command:', message.payload);
                 this.handleCommand(message.payload);
                 break;
             case 'error':
+                console.error('WebViewManager: Error from WebView:', message.payload);
                 vscode.window.showErrorMessage(`CCView Error: ${message.payload}`);
                 break;
             case 'status':
+                console.log('WebViewManager: Status from WebView:', message.payload);
                 vscode.window.showInformationMessage(`CCView: ${message.payload}`);
                 break;
             default:
-                console.log('Unknown message type:', message.type);
+                console.log('WebViewManager: Unknown message type:', message.type);
         }
     }
 
     /**
      * Handle commands from WebView
      */
-    private handleCommand(command: any): void {
-        // Handle various commands from the WebView
-        console.log('Received command from WebView:', command);
+    private async handleCommand(command: any): Promise<void> {
+        console.log('WebViewManager: Received command from WebView:', command);
         
-        // TODO: Implement command handling for ccget, ccwrite, etc.
+        if (this.terminalManager && command.type === 'terminal') {
+            try {
+                console.log('WebViewManager: Processing terminal command:', command.command);
+                const terminalCommand = this.terminalManager.parseCommand(command.command);
+                console.log('WebViewManager: Parsed command:', terminalCommand);
+                
+                const outputs = await this.terminalManager.executeCommand(terminalCommand);
+                console.log('WebViewManager: Command outputs:', outputs);
+                
+                // Send outputs back to WebView
+                for (const output of outputs) {
+                    console.log('WebViewManager: Sending output to WebView:', output);
+                    await this.sendMessage({
+                        type: 'terminal_output',
+                        payload: output,
+                        timestamp: Date.now()
+                    });
+                }
+            } catch (error) {
+                console.error('WebViewManager: Command execution error:', error);
+                await this.sendMessage({
+                    type: 'terminal_output',
+                    payload: {
+                        type: 'error',
+                        content: `Command execution error: ${error}`,
+                        timestamp: Date.now()
+                    },
+                    timestamp: Date.now()
+                });
+            }
+        } else {
+            console.log('WebViewManager: Command not handled - terminalManager:', !!this.terminalManager, 'command.type:', command?.type);
+        }
     }
 
     /**
@@ -119,6 +167,10 @@ export class WebViewManager {
         const miewCssUrl = 'https://unpkg.com/miew@0.11.0/dist/Miew.min.css';
         const threeJsUrl = 'https://unpkg.com/three@0.153.0/build/three.min.js';
         const lodashUrl = 'https://unpkg.com/lodash@^4.17.21/lodash.js';
+        const xtermJsUrl = 'https://unpkg.com/xterm@5.3.0/lib/xterm.js';
+        const xtermCssUrl = 'https://unpkg.com/xterm@5.3.0/css/xterm.css';
+        const xtermFitUrl = 'https://unpkg.com/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js';
+        const xtermWebLinksUrl = 'https://unpkg.com/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.js';
 
         return `<!DOCTYPE html>
 <html lang="en">
@@ -132,6 +184,10 @@ export class WebViewManager {
     <script src="${threeJsUrl}"></script>
     <script src="${miewCdnUrl}"></script>
     <link rel="stylesheet" href="${miewCssUrl}" />
+    <script src="${xtermJsUrl}"></script>
+    <link rel="stylesheet" href="${xtermCssUrl}" />
+    <script src="${xtermFitUrl}"></script>
+    <script src="${xtermWebLinksUrl}"></script>
     
     <style>
         html, body {
@@ -203,14 +259,42 @@ export class WebViewManager {
         }
         
         .terminal-container {
-            height: 200px;
-            background-color: var(--vscode-terminal-background);
-            border-top: 1px solid var(--vscode-panel-border);
+            position: absolute;
+            top: 60px;
+            left: 10px;
+            right: 10px;
+            height: 260px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
             display: none;
+            transition: all 0.3s ease;
         }
         
         .terminal-container.active {
             display: block;
+        }
+        
+        #terminal {
+            height: 100% !important;
+            width: 100% !important;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        #terminal .xterm,
+        #terminal .xterm-viewport,
+        #terminal .xterm-screen {
+            height: 100% !important;
+            box-sizing: border-box;
+        }
+        #terminal .xterm-viewport {
+            background: rgba(30, 30, 30, 0.85) !important;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        #terminal canvas {
+            background: transparent !important;
         }
         
         .info-panel {
@@ -471,10 +555,61 @@ export class WebViewManager {
                 });
             }
             
-            // Initialize terminal
+                        // Initialize terminal
             async function initializeTerminal() {
-                // Terminal will be implemented in Phase 2
-                console.log('Terminal initialization placeholder');
+                // Wait for xterm to be available
+                while (typeof Terminal === 'undefined') {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
+                // Create terminal
+                terminal = new Terminal({
+                    cursorBlink: true,
+                    fontSize: 12,
+                    fontFamily: 'Consolas, "Courier New", monospace',
+                    rows: 18,
+                    theme: {
+                        background: 'transparent',
+                        foreground: '#ffffff',
+                        cursor: '#ffffff',
+                        selection: 'rgba(38, 79, 120, 0.8)'
+                    },
+                    allowTransparency: true
+                });
+                
+                // Create addons
+                const fitAddon = new FitAddon.FitAddon();
+                const webLinksAddon = new WebLinksAddon.WebLinksAddon();
+                
+                // Load addons
+                terminal.loadAddon(fitAddon);
+                terminal.loadAddon(webLinksAddon);
+                
+                // Open terminal
+                terminal.open(document.getElementById('terminal'));
+                
+                // Fit terminal to container
+                fitAddon.fit();
+                
+                // Handle terminal input
+                terminal.onData((data) => {
+                    handleTerminalInput(data);
+                });
+                
+                // Handle terminal resize
+                window.addEventListener('resize', () => {
+                    if (terminalContainer.classList.contains('active')) {
+                        fitAddon.fit();
+                    }
+                });
+                
+                // Write welcome message
+                terminal.writeln('\x1b[1;32mCCView Terminal\x1b[0m');
+                terminal.writeln('Type \x1b[1;33mhelp\x1b[0m for available commands.');
+                terminal.writeln('');
+                terminal.write('\x1b[1;32m>\x1b[0m ');
+                
+                console.log('Terminal initialized successfully');
             }
             
             // Setup event listeners
@@ -510,12 +645,25 @@ export class WebViewManager {
                 // Toggle terminal
                 toggleTerminalButton.addEventListener('click', () => {
                     terminalContainer.classList.toggle('active');
+                    
+                    // ターミナル表示時にリサイズ処理を実行
+                    if (terminalContainer.classList.contains('active')) {
+                        setTimeout(() => {
+                            if (fitAddon) {
+                                fitAddon.fit();
+                            }
+                        }, 100);
+                    }
                 });
                 
                 // リサイズ処理の完全対応
                 const resizeObserver = new ResizeObserver(() => {
                     if (viewer && viewer._onResize) {
                         viewer._onResize();
+                    }
+                    // ターミナルのリサイズも処理
+                    if (terminalContainer.classList.contains('active') && fitAddon) {
+                        fitAddon.fit();
                     }
                 });
                 
@@ -538,6 +686,7 @@ export class WebViewManager {
             // Message handling for VS Code communication
             window.addEventListener('message', event => {
                 const message = event.data;
+                console.log('Received message from VS Code:', message);
                 
                 switch (message.type) {
                     case 'command':
@@ -546,8 +695,95 @@ export class WebViewManager {
                     case 'data':
                         handleData(message.payload);
                         break;
+                    case 'terminal_output':
+                        handleTerminalOutput(message.payload);
+                        break;
+                    default:
+                        console.log('Unknown message type:', message.type);
                 }
             });
+            
+            // Handle terminal input
+            let currentLine = '';
+            
+            function handleTerminalInput(data) {
+                if (data === '\\r') {
+                    // Enter key pressed
+                    terminal.writeln('');
+                    executeTerminalCommand(currentLine);
+                    currentLine = '';
+                    terminal.write('\x1b[1;32m>\x1b[0m ');
+                } else if (data === '\\u007f') {
+                    // Backspace
+                    if (currentLine.length > 0) {
+                        currentLine = currentLine.slice(0, -1);
+                        terminal.write('\\b \\b');
+                    }
+                } else if (data.charCodeAt(0) < 32) {
+                    // Control characters (except backspace)
+                    return;
+                } else {
+                    // Regular character
+                    currentLine += data;
+                    terminal.write(data);
+                }
+            }
+            
+            // Execute terminal command
+            async function executeTerminalCommand(command) {
+                if (!command.trim()) {
+                    return;
+                }
+                
+                console.log('Executing terminal command:', command);
+                
+                // Check if it's a miew command
+                if (command.toLowerCase().startsWith('miew ')) {
+                    const miewCommand = command.substring(5); // Remove 'miew ' prefix
+                    console.log('Executing miew script:', miewCommand);
+                    executeMiewScript(miewCommand);
+                } else {
+                    // Send command to VS Code extension
+                    console.log('Sending command to VS Code extension:', command);
+                    sendMessage('command', {
+                        type: 'terminal',
+                        command: command
+                    });
+                }
+            }
+            
+            // Execute miew script
+            function executeMiewScript(scriptCommand) {
+                if (viewer && typeof viewer.script === 'function') {
+                    try {
+                        viewer.script(scriptCommand, 
+                            (str) => {
+                                // Success callback
+                                if (terminal) {
+                                    terminal.writeln(str);
+                                }
+                            }, 
+                            (str) => {
+                                // Error callback
+                                if (terminal) {
+                                    terminal.writeln(\`\x1b[1;31mError: \${str}\x1b[0m\`);
+                                }
+                            }
+                        );
+                        
+                    } catch (err) {
+                        if (terminal) {
+                            terminal.writeln(\`\x1b[1;31mError: \${err.message}\x1b[0m\`);
+                            terminal.write('\x1b[1;32m>\x1b[0m ');
+                        }
+                    }
+                } else {
+                    if (terminal) {
+                        terminal.writeln('\x1b[1;31mError: Miew viewer not available\x1b[0m');
+                        terminal.write('\x1b[1;32m>\x1b[0m ');
+                    }
+                }
+            }
             
             // Handle commands from VS Code
             function handleCommand(command) {
@@ -561,14 +797,58 @@ export class WebViewManager {
                 // TODO: Implement data handling
             }
             
+            // Handle terminal output from VS Code
+            function handleTerminalOutput(output) {
+                console.log('Handling terminal output:', output);
+                if (terminal) {
+                    if (output.type === 'stdout') {
+                        // Split content by newlines and write each line separately
+                        const lines = output.content.split('\\n');
+                        for (let i = 0; i < lines.length; i++) {
+                            if (i > 0) {
+                                terminal.writeln('');
+                            }
+                            terminal.write(lines[i]);
+                        }
+                        terminal.writeln('');
+                    } else if (output.type === 'stderr') {
+                        terminal.writeln(\`\x1b[1;31m\${output.content}\x1b[0m\`);
+                    } else if (output.type === 'error') {
+                        terminal.writeln(\`\x1b[1;31mError: \${output.content}\x1b[0m\`);
+                    }
+                    // Add prompt after all output
+                    terminal.write('\x1b[1;32m>\x1b[0m ');
+                } else {
+                    console.error('Terminal not available for output');
+                }
+            }
+            
+            // Initialize VS Code API
+            const vscode = acquireVsCodeApi();
+            
             // Send message to VS Code
             function sendMessage(type, payload) {
-                if (window.vscode) {
-                    window.vscode.postMessage({
+                try {
+                    console.log('Sending message to VS Code:', { type, payload });
+                    vscode.postMessage({
                         type: type,
                         payload: payload,
                         timestamp: Date.now()
                     });
+                } catch (error) {
+                    console.error('Error sending message to VS Code:', error);
+                    // Fallback: try to use window.vscode if available
+                    if (window.vscode) {
+                        try {
+                            window.vscode.postMessage({
+                                type: type,
+                                payload: payload,
+                                timestamp: Date.now()
+                            });
+                        } catch (fallbackError) {
+                            console.error('Fallback message sending also failed:', fallbackError);
+                        }
+                    }
                 }
             }
             

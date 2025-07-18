@@ -15,7 +15,7 @@ import traceback
 try:
     import cclib
     from cclib.io import moldenwriter
-    from cclib.io import ccread
+    from cclib.io import ccread, ccwrite
     CCLIB_AVAILABLE = True
 except ImportError:
     CCLIB_AVAILABLE = False
@@ -253,6 +253,26 @@ class QuantumChemistryParser:
         else:
             return [obj] if obj is not None else []
     
+    def _convert_complex_to_json(self, obj) -> Any:
+        """Convert complex objects (including nested numpy arrays) to JSON-serializable format"""
+        if obj is None:
+            return None
+        elif NUMPY_AVAILABLE and isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, dict):
+            return {k: self._convert_complex_to_json(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [self._convert_complex_to_json(item) for item in obj]
+        elif NUMPY_AVAILABLE and isinstance(obj, np.integer):
+            return int(obj)
+        elif NUMPY_AVAILABLE and isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, (int, float, str, bool)):
+            return obj
+        else:
+            # For other types, try to convert to string
+            return str(obj)
+    
     def execute_ccget(self, file_path: str, property_name: str) -> Dict[str, Any]:
         """Execute ccget command equivalent"""
         try:
@@ -260,10 +280,11 @@ class QuantumChemistryParser:
             
             if hasattr(data, property_name):
                 value = getattr(data, property_name)
+                converted_value = self._convert_complex_to_json(value)
                 return {
                     'success': True,
                     'property': property_name,
-                    'value': self._convert_to_list(value)
+                    'value': converted_value
                 }
             else:
                 return {
@@ -274,48 +295,33 @@ class QuantumChemistryParser:
         except Exception as e:
             return {
                 'success': False,
-                'error': str(e)
+                'error': str(e),
+                'traceback': traceback.format_exc()
             }
     
     def execute_ccwrite(self, file_path: str, output_format: str, output_path: str = None) -> Dict[str, Any]:
-        """Execute ccwrite command equivalent"""
+        """Execute ccwrite command equivalent using cclib's ccwrite function"""
         try:
             data = ccread(file_path)
             
-            if output_format == 'json':
-                result = self.parse_file(file_path)
-                if output_path:
-                    with open(output_path, 'w') as f:
-                        json.dump(result, f, indent=2)
+            # Use cclib's ccwrite function for all formats
+            if output_path:
+                # Write to file
+                ccwrite(data, output_format, output_path)
                 return {
                     'success': True,
-                    'format': 'json',
+                    'format': output_format,
                     'output_path': output_path,
-                    'data': result
+                    'message': f'Successfully converted to {output_format} format: {output_path}'
                 }
-            elif output_format == 'xyz':
-                if hasattr(data, 'writexyz'):
-                    if output_path:
-                        data.writexyz(output_path)
-                    else:
-                        # Return XYZ content as string
-                        import io
-                        output = io.StringIO()
-                        data.writexyz(output)
-                        return {
-                            'success': True,
-                            'format': 'xyz',
-                            'content': output.getvalue()
-                        }
-                else:
-                    return {
-                        'success': False,
-                        'error': 'XYZ output not supported for this file type'
-                    }
             else:
+                # Return content as string
+                result = ccwrite(data, output_format, None)
                 return {
-                    'success': False,
-                    'error': f'Output format {output_format} not supported'
+                    'success': True,
+                    'format': output_format,
+                    'content': result,
+                    'message': f'Successfully converted to {output_format} format'
                 }
                 
         except Exception as e:
