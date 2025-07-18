@@ -231,7 +231,7 @@ export class WebViewManager {
         }
         
         select, button {
-            padding: 4px 8px;
+            padding: 5px 8px;
             border: 1px solid var(--vscode-input-border);
             background-color: var(--vscode-input-background);
             color: var(--vscode-input-foreground);
@@ -245,6 +245,40 @@ export class WebViewManager {
         
         button:hover {
             background-color: var(--vscode-button-hoverBackground);
+        }
+        
+        .icon-button {
+            min-width: 60px;
+            height: 26px;
+            padding: 2px 8px;
+            border: 1px solid var(--vscode-input-border);
+            background-color: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .icon-button:hover {
+            background-color: var(--vscode-button-hoverBackground);
+            border-color: var(--vscode-focusBorder);
+        }
+        
+        .icon-button:focus {
+            outline: 1px solid var(--vscode-focusBorder);
+            outline-offset: 1px;
+        }
+        
+        .icon-button svg {
+            width: 16px;
+            height: 16px;
+            color: inherit;
         }
         
         .viewer-container {
@@ -344,11 +378,9 @@ export class WebViewManager {
         <div class="header">
             <div class="controls">
                 <div class="control-group">
-                    <label>Representation:</label>
+                    <label>Style:</label>
                     <select id="representation">
-                        <option value="TU">Tube</option>
                         <option value="LC">Licorice</option>
-                        <option value="CA">Cartoon</option>
                         <option value="BS" selected>Ball & Stick</option>
                         <option value="VW">Van der Waals</option>
                         <option value="LN">Lines</option>
@@ -356,19 +388,30 @@ export class WebViewManager {
                 </div>
                 
                 <div class="control-group">
-                    <label>Color:</label>
-                    <select id="coloring">
-                        <option value="EL" selected>Element</option>
-                        <option value="CH">Chain</option>
-                        <option value="UN">Uniform</option>
-                        <option value="SS">Secondary Structure</option>
-                    </select>
-                </div>
-                
-                <div class="control-group">
-                    <button id="reset-view">Reset View</button>
-                    <button id="toggle-info">Info</button>
-                    <button id="toggle-terminal">Terminal</button>
+                    <button id="reset-view" class="icon-button" title="Reset View">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                            <path d="M3 3v5h5"/>
+                        </svg>
+                        Reset
+                    </button>
+                    
+                    <button id="toggle-info" class="icon-button" title="Info">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 16v-4"/>
+                            <path d="M12 8h.01"/>
+                        </svg>
+                        Info
+                    </button>
+                    
+                    <button id="toggle-terminal" class="icon-button" title="Terminal">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect width="18" height="18" x="3" y="3" rx="2"/>
+                            <path d="m10 8 4 4-4 4"/>
+                        </svg>
+                        Terminal
+                    </button>
                 </div>
             </div>
         </div>
@@ -425,7 +468,6 @@ export class WebViewManager {
             
             // Control elements
             const representationSelect = document.getElementById('representation');
-            const coloringSelect = document.getElementById('coloring');
             const resetViewButton = document.getElementById('reset-view');
             const toggleInfoButton = document.getElementById('toggle-info');
             const toggleTerminalButton = document.getElementById('toggle-terminal');
@@ -619,14 +661,6 @@ export class WebViewManager {
                     if (viewer) {
                         const mode = e.target.value;
                         viewer.rep(0, { mode: mode });
-                    }
-                });
-                
-                // Coloring change
-                coloringSelect.addEventListener('change', (e) => {
-                    if (viewer) {
-                        const colorer = e.target.value;
-                        viewer.rep(0, { colorer: colorer });
                     }
                 });
                 
