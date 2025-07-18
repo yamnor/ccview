@@ -712,7 +712,7 @@ export class WebViewManager {
                     terminal.writeln('');
                     executeTerminalCommand(currentLine);
                     currentLine = '';
-                    terminal.write('\x1b[1;32m>\x1b[0m ');
+                    // Don't add prompt here - it will be added after command execution
                 } else if (data === '\\u007f') {
                     // Backspace
                     if (currentLine.length > 0) {
@@ -761,12 +761,14 @@ export class WebViewManager {
                                 // Success callback
                                 if (terminal) {
                                     terminal.writeln(str);
+                                    terminal.write('\x1b[1;32m>\x1b[0m ');
                                 }
                             }, 
                             (str) => {
                                 // Error callback
                                 if (terminal) {
                                     terminal.writeln(\`\x1b[1;31mError: \${str}\x1b[0m\`);
+                                    terminal.write('\x1b[1;32m>\x1b[0m ');
                                 }
                             }
                         );
@@ -805,18 +807,18 @@ export class WebViewManager {
                         // Split content by newlines and write each line separately
                         const lines = output.content.split('\\n');
                         for (let i = 0; i < lines.length; i++) {
-                            if (i > 0) {
-                                terminal.writeln('');
+                            if (i === lines.length - 1 && lines[i] === '') {
+                                // Skip empty last line to avoid extra newline
+                                break;
                             }
-                            terminal.write(lines[i]);
+                            terminal.writeln(lines[i]);
                         }
-                        terminal.writeln('');
                     } else if (output.type === 'stderr') {
                         terminal.writeln(\`\x1b[1;31m\${output.content}\x1b[0m\`);
                     } else if (output.type === 'error') {
                         terminal.writeln(\`\x1b[1;31mError: \${output.content}\x1b[0m\`);
                     }
-                    // Add prompt after all output
+                    // Add prompt after all output is complete
                     terminal.write('\x1b[1;32m>\x1b[0m ');
                 } else {
                     console.error('Terminal not available for output');
