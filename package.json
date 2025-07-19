@@ -9,11 +9,6 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onCommand:ccview.openViewer",
-    "onCommand:ccview.parseFile",
-    "onStartupFinished"
-  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [

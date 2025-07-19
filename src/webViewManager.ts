@@ -355,7 +355,7 @@ ${scriptContent}
             // Molecular data from VS Code extension
             const molecularData = ${JSON.stringify(options.data)};` : '';
 
-        const terminalVars = options.hasTerminal ? 'let terminal = null;' : '';
+        const terminalVars = options.hasTerminal ? 'let terminal = null; let fitAddon = null;' : '';
         const terminalContainerVar = options.hasTerminal ? 'const terminalContainer = document.getElementById("terminal-container");' : '';
         const toggleTerminalButtonVar = options.hasTerminal ? 'const toggleTerminalButton = document.getElementById("toggle-terminal");' : '';
 
@@ -422,7 +422,6 @@ ${scriptContent}
                     cursorBlink: true,
                     fontSize: 12,
                     fontFamily: 'Consolas, "Courier New", monospace',
-                    rows: 15,
                     theme: {
                         background: 'transparent',
                         foreground: '#ffffff',
@@ -438,11 +437,21 @@ ${scriptContent}
                 terminal.loadAddon(fitAddon);
                 terminal.loadAddon(webLinksAddon);
                 
-                terminal.open(document.getElementById('terminal'));
-                fitAddon.fit();
+                // Store fitAddon globally for access in toggle function
+                window.fitAddon = fitAddon;
                 
-                terminal.onData((data) => {
-                    handleTerminalInput(data);
+                // DOM接続とサイズ調整を待つ
+                await new Promise(resolve => {
+                    terminal.open(document.getElementById('terminal'));
+                    fitAddon.fit();
+                    
+                    // 次のフレームでイベントリスナーを設定
+                    requestAnimationFrame(() => {
+                        terminal.onData((data) => {
+                            handleTerminalInput(data);
+                        });
+                        resolve();
+                    });
                 });
                 
                 window.addEventListener('resize', () => {
@@ -451,10 +460,14 @@ ${scriptContent}
                     }
                 });
                 
+                // 初期化完了後にプロンプト表示
                 terminal.writeln('\\x1b[1;32mCCView Terminal\\x1b[0m');
                 terminal.writeln('Type \\x1b[1;33mhelp\\x1b[0m for available commands.');
                 terminal.writeln('');
                 terminal.write('\\x1b[1;32m>\\x1b[0m ');
+                
+                // フォーカスを設定
+                terminal.focus();
             }` : '';
 
         const terminalToggle = options.hasTerminal ? `
@@ -465,8 +478,8 @@ ${scriptContent}
                     // Execute resize when terminal is shown
                     if (terminalContainer.classList.contains('active')) {
                         setTimeout(() => {
-                            if (fitAddon) {
-                                fitAddon.fit();
+                            if (window.fitAddon) {
+                                window.fitAddon.fit();
                             }
                         }, 100);
                     }
@@ -474,8 +487,8 @@ ${scriptContent}
 
         const terminalResize = options.hasTerminal ? `
                     // Handle terminal resize as well
-                    if (terminalContainer.classList.contains('active') && fitAddon) {
-                        fitAddon.fit();
+                    if (terminalContainer.classList.contains('active') && window.fitAddon) {
+                        window.fitAddon.fit();
                     }` : '';
 
 
@@ -582,14 +595,32 @@ ${scriptContent}
                             (str) => {
                                 // Success callback
                                 if (terminal) {
-                                    terminal.writeln(str);
+                                    const normalizedContent = str
+                                        .replace(/\\r\\n/g, '\\n')
+                                        .replace(/\\r/g, '\\n');
+                                    
+                                    const lines = normalizedContent.split('\\n');
+                                    for (const line of lines) {
+                                        if (line.trim() !== '') {
+                                            terminal.writeln(line);
+                                        }
+                                    }
                                     terminal.write('\\x1b[1;32m>\\x1b[0m ');
                                 }
                             }, 
                             (str) => {
                                 // Error callback
                                 if (terminal) {
-                                    terminal.writeln(\`\\x1b[1;31mError: \${str}\\x1b[0m\`);
+                                    const normalizedContent = str
+                                        .replace(/\\r\\n/g, '\\n')
+                                        .replace(/\\r/g, '\\n');
+                                    
+                                    const lines = normalizedContent.split('\\n');
+                                    for (const line of lines) {
+                                        if (line.trim() !== '') {
+                                            terminal.writeln(\`\\x1b[1;31mError: \${line}\\x1b[0m\`);
+                                        }
+                                    }
                                     terminal.write('\\x1b[1;32m>\\x1b[0m ');
                                 }
                             }
@@ -623,8 +654,11 @@ ${scriptContent}
             function handleTerminalOutput(output) {
                 if (terminal) {
                     if (output.type === 'stdout') {
-                        // Split content by newlines and write each line separately
-                        const lines = output.content.split('\\n');
+                        const normalizedContent = output.content
+                            .replace(/\\r\\n/g, '\\n')
+                            .replace(/\\r/g, '\\n');
+                        
+                        const lines = normalizedContent.split('\\n');
                         for (let i = 0; i < lines.length; i++) {
                             if (i === lines.length - 1 && lines[i] === '') {
                                 // Skip empty last line to avoid extra newline
@@ -725,8 +759,8 @@ ${scriptContent}
                     container: miewContainer,
                     settings: {
                         autoPreset: false,
-                        bg: { color: 0x002c36 },
-                        fog: { enabled: false },
+                        bg: { color: 0xffffff, transparent: true },
+                        fog: { enabled: true },
                         fps: false,
                         axes: false,
                         resolution: 'medium'
@@ -929,42 +963,31 @@ ${scriptContent}
             position: absolute;
             top: 60px;
             left: 10px;
-            right: 10px;
-            height: 220px;
             z-index: 1000;
             display: none;
             transition: all 0.3s ease;
+            width: 50vw;
+            height: 25vh;
         }
         
         .terminal-container.active {
             display: block;
         }
-        
-        #terminal {
-            height: 100% !important;
-            width: 100% !important;
-            box-sizing: border-box;
-            overflow: hidden;
-        }
-        #terminal .xterm,
-        #terminal .xterm-viewport,
-        #terminal .xterm-screen {
-            height: 100% !important;
-            box-sizing: border-box;
-        }
-        #terminal .xterm-viewport {
-            background: transparent !important;
+
+        #terminal .xterm {
+            padding: 10px;
         }
 
-        #terminal .xterm-screen {
-            width: 100% !important;
-            background: rgba(2, 33, 43, 0.7) !important;
-            padding: 4px;
+        #terminal .xterm-viewport {
+            scrollbar-width: none;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.7) !important;
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
             border: 1px solid rgba(255, 255, 255, 0.15);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
+
         #terminal canvas {
             background: transparent !important;
         }

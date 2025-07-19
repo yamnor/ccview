@@ -1,70 +1,170 @@
-# CCView - Quantum Chemistry File Viewer
+# CCView - Computational Chemistry File Viewer
 
-CCView is a VS Code extension that provides quantum chemistry output file viewing capabilities using cclib for parsing and miew for 3D molecular visualization.
+CCView is a VS Code extension that provides comprehensive computational chemistry output file viewing capabilities. It combines the robust parsing power of cclib with the advanced 3D molecular visualization of miew, offering an integrated terminal interface for computational chemistry workflows.
 
-## Features
+## ✨ Features
 
-- **File Detection**: Automatic detection of quantum chemistry output files (Gaussian, GAMESS, NWChem, ORCA, etc.)
-- **Molecular Visualization**: 3D molecular structure viewing with miew
-- **Data Parsing**: Comprehensive parsing of quantum chemistry data using cclib
-- **Interactive Controls**: Representation modes, coloring options, and view controls
-- **Python Integration**: Seamless integration with Python environment for cclib processing
+### 🔬 **Advanced Molecular Visualization**
+- **3D Molecular Structure Viewing**: Interactive 3D visualization using miew viewer
+- **Multiple Representation Modes**: 
+  - Ball & Stick, Licorice, Tube, Lines, Van der Waals
+  - Cartoon representation for PDB files with secondary structure coloring
+- **Dynamic Coloring Options**: Element-based, Chain-based, Secondary structure, Uniform
+- **Interactive Controls**: Rotate, zoom, pan, and select atoms
+- **Real-time Updates**: Dynamic representation and color scheme changes
 
-## Supported File Formats
+### 📊 **Comprehensive Data Parsing**
+- **cclib Integration**: Robust parsing of quantum chemistry data
+- **Molecular Information**: Atomic coordinates, masses, charges, multiplicity
+- **Energy Data**: SCF energies, MP2 energies, coupled-cluster energies, ZPVE
+- **Vibrational Analysis**: Frequencies, IR intensities, Raman activities, displacements
+- **Molecular Orbitals**: Orbital energies, coefficients, HOMO/LUMO information
+- **Properties**: Multipole moments, polarizabilities, atomic charges, spin densities
 
-- **Gaussian** (.log, .out)
-- **GAMESS** (.log, .out)
-- **GAMESS-UK** (.log, .out)
-- **NWChem** (.out)
-- **ORCA** (.out)
-- **Q-Chem** (.out)
-- **Psi4** (.out)
-- **Turbomole** (.out)
-- **Molpro** (.out)
-- **Molcas** (.out)
-- **ADF** (.out)
-- **CFOUR** (.out)
-- **DALTON** (.out)
-- **Jaguar** (.out)
-- **MOPAC** (.out)
-- **XTB** (.out)
+### 💻 **Integrated Terminal Interface**
+- **xterm.js Terminal**: Full-featured terminal emulator within VS Code
+- **ccget Commands**: Extract molecular data using cclib's ccget functionality
+- **ccwrite Commands**: Export data in multiple formats (JSON, XYZ, CML, MOLDEN, WFX)
+- **miew Scripting**: Direct control of molecular visualization through miew commands
+- **Command History**: Navigate through command history with arrow keys
+- **Real-time Output**: Live display of command results and errors
 
-## Requirements
+### 🔍 **Smart File Detection**
+- **Automatic Format Recognition**: Detects quantum chemistry file formats
+- **Direct File Support**: Native support for PDB, CIF, XYZ files
+- **cclib Processing**: Advanced parsing for quantum chemistry output files
 
-- VS Code 1.74.0 or higher
-- Python 3.7 or higher
-- Required Python packages:
-  - cclib
-  - numpy
-  - scipy
+## 🧪 Supported File Formats
 
-## Installation
+### Quantum Chemistry Output Files
+- **Gaussian** (.log, .out) - Most widely used
+- **GAMESS** (.log, .out) - American version
+- **GAMESS-UK** (.log, .out) - British version
+- **NWChem** (.out) - Open source
+- **ORCA** (.out) - Free version available
+- **Q-Chem** (.out) - Commercial
+- **Psi4** (.out) - Open source
+- **Turbomole** (.out) - Commercial
+- **Molpro** (.out) - Commercial
+- **Molcas** (.out) - Commercial
+- **ADF** (.out) - Amsterdam Density Functional
+- **CFOUR** (.out) - Coupled-Cluster
+- **DALTON** (.out) - Open source
+- **Jaguar** (.out) - Commercial
+- **MOPAC** (.out) - Semi-empirical
+- **XTB** (.out) - Fast calculation
 
-1. Clone this repository
-2. Install dependencies:
+### Direct Structure Files
+- **PDB** (.pdb) - Protein Data Bank format
+- **CIF** (.cif) - Crystallographic Information Framework
+- **XYZ** (.xyz) - Cartesian coordinates format
+
+## 🚀 Quick Start
+
+### Installation
+
+1. **Install the Extension**
+   - Install from VS Code Marketplace
+   - Or clone and install locally:
    ```bash
+   git clone https://github.com/your-repo/ccview-extension.git
+   cd ccview-extension
    npm install
-   ```
-3. Compile the extension:
-   ```bash
    npm run compile
    ```
-4. Install required Python packages:
+
+2. **Install Python Dependencies**
    ```bash
    pip install cclib numpy scipy
    ```
 
-## Usage
+3. **Verify Python Environment**
+   - Ensure VS Code Python extension is installed
+   - Select appropriate Python interpreter in VS Code
 
-1. Open a quantum chemistry output file (.log or .out) in VS Code
-2. Right-click on the file in the explorer and select "Open with CCView"
-3. Or use the command palette: `CCView: Open CCView`
-4. The molecular viewer will open with the parsed structure
+### Usage
 
-## Development
+1. **Open a File**
+   - Open any supported quantum chemistry file (.log, .out, .pdb, .cif, .xyz)
+   - Right-click in the explorer and select "Open with CCView"
+   - Or use Command Palette: `CCView: Open CCView`
+
+2. **Explore the Interface**
+   - **3D Viewer**: Interactive molecular visualization
+   - **Controls**: Change representation modes and colors
+   - **Terminal**: Access advanced commands (click Terminal button)
+
+3. **Use Terminal Commands**
+   ```bash
+   # Get molecular coordinates
+   ccget coords
+   
+   # Get SCF energies
+   ccget scfenergies
+   
+   # Get vibrational frequencies
+   ccget vibfreqs
+   
+   # Export to XYZ format
+   ccwrite xyz molecule.out
+   
+   # Change molecular representation
+   miew tube
+   miew ballstick
+   miew color element
+   ```
+
+## 🛠️ Advanced Features
+
+### Terminal Commands
+
+#### ccget Commands
+- `ccget --list` - List available properties
+- `ccget coords` - Get atomic coordinates
+- `ccget scfenergies` - Get SCF energies
+- `ccget vibfreqs` - Get vibrational frequencies
+- `ccget moenergies` - Get molecular orbital energies
+- `ccget atomcharges` - Get atomic charges
+- `ccget moments` - Get multipole moments
+
+#### ccwrite Commands
+- `ccwrite json molecule.out` - Export as JSON
+- `ccwrite xyz molecule.out` - Export as XYZ
+- `ccwrite cml molecule.out` - Export as CML
+- `ccwrite molden molecule.out` - Export as MOLDEN
+- `ccwrite wfx molecule.out` - Export as WFX
+
+#### miew Commands
+- `miew tube` - Switch to tube representation
+- `miew licorice` - Switch to licorice representation
+- `miew ballstick` - Switch to ball & stick representation
+- `miew color element` - Color by element
+- `miew color chain` - Color by chain
+- `miew color secondary` - Color by secondary structure
+
+### Representation Modes
+
+#### For Quantum Chemistry Files
+- **Ball & Stick** (default) - Atoms as spheres, bonds as cylinders
+- **Licorice** - Atoms and bonds as cylinders
+- **Van der Waals** - Atoms as spheres with VDW radii
+- **Lines** - Simple line representation
+
+#### For PDB Files (Additional)
+- **Cartoon** (default) - Protein backbone representation
+- **Tube** - Smooth tube representation
+- **Secondary Structure** - Helix, sheet, coil coloring
+
+### Color Schemes
+- **Element** - Color by chemical element
+- **Chain** - Color by protein chain
+- **Secondary Structure** - Color by protein secondary structure
+- **Residue** - Color by amino acid residue
+- **Uniform** - Single color
+
+## 🔧 Development
 
 ### Project Structure
-
 ```
 ccview-extension/
 ├── src/                    # TypeScript source files
@@ -72,16 +172,19 @@ ccview-extension/
 │   ├── fileDetector.ts    # File format detection
 │   ├── pythonManager.ts   # Python environment management
 │   ├── parserInterface.ts # Python backend communication
-│   └── webViewManager.ts  # WebView and miew integration
+│   ├── webViewManager.ts  # WebView and miew integration
+│   └── terminalManager.ts # Terminal interface management
 ├── python/                # Python backend
 │   └── parser.py         # cclib integration
 ├── out/                   # Compiled JavaScript files
 └── package.json          # Extension manifest
 ```
 
-### Building
-
+### Building from Source
 ```bash
+# Install dependencies
+npm install
+
 # Compile TypeScript
 npm run compile
 
@@ -92,34 +195,79 @@ npm run watch
 npm test
 ```
 
-### Testing
+### Debugging
+1. Press F5 in VS Code to launch extension in debug mode
+2. Open a quantum chemistry file
+3. Test functionality in the new VS Code window
 
-1. Press F5 in VS Code to launch the extension in debug mode
-2. Open a quantum chemistry output file
-3. Test the extension functionality
+## 🐛 Troubleshooting
 
-## Features in Development
+### Common Issues
 
-- Terminal interface with xterm.js
-- ccget and ccwrite command integration
-- Advanced molecular analysis tools
-- Export functionality
-- Animation support for vibrational modes
+1. **Python Environment Not Found**
+   - Install VS Code Python extension
+   - Select Python interpreter: `Ctrl+Shift+P` → "Python: Select Interpreter"
 
-## Contributing
+2. **cclib Not Installed**
+   ```bash
+   pip install cclib
+   ```
+
+3. **File Not Recognized**
+   - Check file extension (.log, .out, .pdb, .cif, .xyz)
+   - Verify file content is valid
+
+4. **Terminal Not Responding**
+   - Click the Terminal button to activate
+   - Try pressing Enter to refresh the prompt
+
+5. **3D Viewer Not Loading**
+   - Check internet connection (CDN libraries)
+   - Verify file contains valid molecular data
+
+### Debug Information
+- Check VS Code Output panel for error messages
+- Use Developer Tools (F12) in WebView for detailed errors
+- Review console logs for debugging information
+
+## 📈 Performance
+
+- **Large Molecules**: Optimized for molecules with 1000+ atoms
+- **Memory Management**: Efficient memory usage for large files
+- **Rendering**: Hardware-accelerated 3D rendering
+- **Parsing**: Fast cclib-based parsing with caching
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch: `git checkout -b feature/new-feature`
 3. Make your changes
 4. Add tests if applicable
 5. Submit a pull request
 
-## License
+### Development Guidelines
+- Follow TypeScript best practices
+- Use English for all code comments and UI text
+- Maintain consistent code style
+- Add appropriate error handling
 
-This project is licensed under the MIT License.
+## 📄 License
 
-## Acknowledgments
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-- [cclib](https://cclib.github.io/) - Quantum chemistry file parsing library
-- [miew](https://miew.opensource.epam.com/) - 3D molecular visualization library
-- [VS Code Extension API](https://code.visualstudio.com/api) - Extension development framework 
+## 🙏 Acknowledgments
+
+- **[cclib](https://cclib.github.io/)** - Quantum chemistry file parsing library
+- **[miew](https://miew.opensource.epam.com/)** - 3D molecular visualization library
+- **[xterm.js](https://xtermjs.org/)** - Terminal emulator for the web
+- **[VS Code Extension API](https://code.visualstudio.com/api)** - Extension development framework
+
+## 📞 Support
+
+- **Issues**: Report bugs and request features on GitHub
+- **Documentation**: Check the [Wiki](https://github.com/your-repo/ccview-extension/wiki)
+- **Community**: Join discussions in GitHub Discussions
+
+---
+
+**CCView** - Making computational chemistry accessible and interactive in VS Code! 🧪⚛️ 
