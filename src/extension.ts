@@ -12,7 +12,6 @@ import { TerminalManager } from './terminalManager';
  * using cclib for parsing and miew for 3D molecular visualization.
  */
 export function activate(context: vscode.ExtensionContext) {
-    console.log('CCView extension is now active!');
 
     // Initialize managers
     const fileDetector = new FileDetector();
@@ -187,5 +186,4 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
-    console.log('CCView extension is now deactivated!');
 } 
