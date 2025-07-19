@@ -424,7 +424,7 @@ ${scriptContent}
                     cursorBlink: true,
                     fontSize: 12,
                     fontFamily: 'Consolas, "Courier New", monospace',
-                    rows: 18,
+                    rows: 15,
                     theme: {
                         background: 'transparent',
                         foreground: '#ffffff',
@@ -810,7 +810,7 @@ ${scriptContent}
             height: 100%;
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: var(--vscode-editor-font-family);
             background-color: var(--vscode-editor-background);
             color: var(--vscode-editor-foreground);
         }
@@ -932,10 +932,7 @@ ${scriptContent}
             top: 60px;
             left: 10px;
             right: 10px;
-            height: 260px;
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            height: 220px;
             z-index: 1000;
             display: none;
             transition: all 0.3s ease;
@@ -958,9 +955,17 @@ ${scriptContent}
             box-sizing: border-box;
         }
         #terminal .xterm-viewport {
-            background: rgba(30, 30, 30, 0.85) !important;
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            background: transparent !important;
+        }
+
+        #terminal .xterm-screen {
+            width: 100% !important;
+            background: rgba(0, 0, 0, 0.7) !important;
+            padding: 4px;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
         #terminal canvas {
             background: transparent !important;
