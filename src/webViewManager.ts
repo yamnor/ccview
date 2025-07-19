@@ -246,6 +246,9 @@ ${scriptContent}
     <style>
         ${this.getCommonStyles(hasTerminal)}
     </style>
+    
+    <!-- VS Code Codicon CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@vscode/codicons@0.0.35/dist/codicon.css">
 </head>`;
     }
 
@@ -259,38 +262,11 @@ ${scriptContent}
     }): string {
         const terminalButton = options.hasTerminal ? `
                     <button id="toggle-terminal" class="icon-button" title="Terminal">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect width="18" height="18" x="3" y="3" rx="2"/>
-                            <path d="m10 8 4 4-4 4"/>
-                        </svg>
+                        <span class="codicon codicon-terminal"></span>
                         Terminal
                     </button>` : '';
 
-        const infoPanelContent = options.dataSource === 'molecular' ? `
-                <div class="info-item">
-                    <span class="info-label">Atoms:</span>
-                    <span id="atom-count">-</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Charge:</span>
-                    <span id="molecule-charge">-</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Multiplicity:</span>
-                    <span id="molecule-multiplicity">-</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Format:</span>
-                    <span id="file-format">-</span>
-                </div>` : `
-                <div class="info-item">
-                    <span class="info-label">File Type:</span>
-                    <span id="file-type">${this.getFileTypeFromExtension(options.filePath?.split('.').pop()?.toLowerCase())}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">File Path:</span>
-                    <span id="file-path">${options.filePath?.split('/').pop()}</span>
-                </div>`;
+
 
         const terminalContainer = options.hasTerminal ? `
         <div id="terminal-container" class="terminal-container">
@@ -346,23 +322,6 @@ ${scriptContent}
                 ${colorControlGroup}
                 
                 <div class="control-group">
-                    <button id="reset-view" class="icon-button" title="Reset View">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                            <path d="M3 3v5h5"/>
-                        </svg>
-                        Reset
-                    </button>
-                    
-                    <button id="toggle-info" class="icon-button" title="Info">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <path d="M12 16v-4"/>
-                            <path d="M12 8h.01"/>
-                        </svg>
-                        Info
-                    </button>
-                    
                     ${terminalButton}
                 </div>
             </div>
@@ -370,10 +329,6 @@ ${scriptContent}
         
         <div class="viewer-container">
             <div id="miew-container" class="miew-container"></div>
-            
-            <div id="info-panel" class="info-panel">
-                ${infoPanelContent}
-            </div>
             
             <div id="loading" class="loading">
                 Loading molecular viewer...
@@ -525,19 +480,7 @@ ${scriptContent}
                         fitAddon.fit();
                     }` : '';
 
-        const updateInfoPanelFunction = options.dataSource === 'molecular' ? `
-            // Update info panel
-            function updateInfoPanel() {
-                if (molecularData.molecule) {
-                    document.getElementById('atom-count').textContent = molecularData.molecule.natom;
-                    document.getElementById('molecule-charge').textContent = molecularData.molecule.charge;
-                    document.getElementById('molecule-multiplicity').textContent = molecularData.molecule.multiplicity;
-                }
-                
-                if (molecularData.detected_format) {
-                    document.getElementById('file-format').textContent = molecularData.detected_format;
-                }
-            }` : '';
+
 
         // Generate event handlers based on file type
         const representationEventHandler = isPDBFile ? `
@@ -740,13 +683,10 @@ ${scriptContent}
             const miewContainer = document.getElementById('miew-container');
             const loadingElement = document.getElementById('loading');
             const errorElement = document.getElementById('error');
-            const infoPanel = document.getElementById('info-panel');
             ${terminalContainerVar}
             
             // Control elements
             const representationSelect = document.getElementById('representation');
-            const resetViewButton = document.getElementById('reset-view');
-            const toggleInfoButton = document.getElementById('toggle-info');
             ${toggleTerminalButtonVar}
             ${colorerVar}
             
@@ -763,7 +703,7 @@ ${scriptContent}
                     // Setup event listeners
                     setupEventListeners();
                     
-                    ${updateInfoPanel}
+
                     
                     // Hide loading
                     loadingElement.style.display = 'none';
@@ -837,18 +777,6 @@ ${scriptContent}
                 
                 ${colorerEventHandler}
                 
-                // Reset view
-                resetViewButton.addEventListener('click', () => {
-                    if (viewer) {
-                        viewer.resetView();  // Reset camera position while keeping molecule
-                    }
-                });
-                
-                // Toggle info panel
-                toggleInfoButton.addEventListener('click', () => {
-                    infoPanel.classList.toggle('active');
-                });
-                
                 ${terminalToggle}
                 
                 // Complete resize handling
@@ -862,7 +790,7 @@ ${scriptContent}
                 resizeObserver.observe(miewContainer);
             }
             
-            ${updateInfoPanelFunction}
+
             
             ${terminalMessageHandling}
             
@@ -963,10 +891,10 @@ ${scriptContent}
             outline-offset: 1px;
         }
         
-        .icon-button svg {
-            width: 16px;
-            height: 16px;
+        .icon-button .codicon {
+            font-size: 16px;
             color: inherit;
+            vertical-align: middle;
         }
         
         .viewer-container {
@@ -980,31 +908,7 @@ ${scriptContent}
             height: 100%;
         }
         
-        .info-panel {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background-color: var(--vscode-editor-background);
-            border: 1px solid var(--vscode-panel-border);
-            border-radius: 5px;
-            padding: 10px;
-            max-width: 300px;
-            font-size: 12px;
-            display: none;
-        }
-        
-        .info-panel.active {
-            display: block;
-        }
-        
-        .info-item {
-            margin-bottom: 5px;
-        }
-        
-        .info-label {
-            font-weight: 500;
-            color: var(--vscode-descriptionForeground);
-        }
+
         
         .loading {
             display: flex;
