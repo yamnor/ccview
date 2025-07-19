@@ -1,7 +1,7 @@
 {
   "name": "ccview",
   "displayName": "CCView",
-  "description": "Quantum chemistry output file viewer with cclib and miew",
+  "description": "Computational chemistry output file viewer",
   "version": "0.1.0",
   "engines": {
     "vscode": "^1.74.0"
@@ -24,7 +24,7 @@
       },
       {
         "command": "ccview.parseFile",
-        "title": "Parse Quantum Chemistry File",
+        "title": "Parse Computational Chemistry File",
         "category": "CCView"
       }
     ],

@@ -8,7 +8,7 @@ import { TerminalManager } from './terminalManager';
 /**
  * CCView VS Code Extension
  * 
- * This extension provides quantum chemistry output file viewing capabilities
+ * This extension provides computational chemistry output file viewing capabilities
  * using cclib for parsing and miew for 3D molecular visualization.
  */
 export function activate(context: vscode.ExtensionContext) {
@@ -55,7 +55,7 @@ export function activate(context: vscode.ExtensionContext) {
                 terminalManager.setCurrentFile(filePath);
 
                 // Process based on file type
-                if (fileType.fileType?.parser === 'direct') {
+                if (fileType.parser === 'direct') {
                     // Direct loading for PDB, CIF, XYZ files
                     progress.report({ increment: 30, message: "Loading file directly..." });
                     await webViewManager.createDirectViewer(filePath);
@@ -91,7 +91,7 @@ export function activate(context: vscode.ExtensionContext) {
                 canSelectMany: false,
                 filters: {
                     'Molecular Structure Files': ['pdb', 'cif', 'xyz'],
-                    'Quantum Chemistry Files': ['log', 'out']
+                    'Computational Chemistry Files': ['log', 'out']
                 }
             });
 
@@ -120,7 +120,7 @@ export function activate(context: vscode.ExtensionContext) {
                 terminalManager.setCurrentFile(filePath);
 
                 // Process based on file type
-                if (fileType.fileType?.parser === 'direct') {
+                if (fileType.parser === 'direct') {
                     // Direct loading for PDB, CIF, XYZ files
                     progress.report({ increment: 30, message: "Loading file directly..." });
                     await webViewManager.createDirectViewer(filePath);
