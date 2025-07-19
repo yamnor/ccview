@@ -1,0 +1,62 @@
+# Development files and directories
+dev/
+DEVELOPMENT.md
+.cursor/
+
+# Source files (compiled to out/)
+src/
+tsconfig.json
+
+# Development dependencies
+node_modules/
+package-lock.json
+
+# Build artifacts
+*.vsix
+*.tgz
+
+# IDE and editor files
+.vscode/
+.cursor/
+
+# Git files
+.git/
+.gitignore
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Test files
+.vscode-test/
+coverage/
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+.parcel-cache/
+
+# Documentation (keep README.md)
+dev/docs/
+dev/source/
+
+# Example files
+dev/example.log 
