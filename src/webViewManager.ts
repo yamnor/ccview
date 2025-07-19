@@ -202,17 +202,31 @@ export class WebViewManager {
         data: MolecularData | string;
         filePath?: string;
     }): Promise<string> {
-        const miewCdnUrl = 'https://unpkg.com/miew@0.11.0/dist/Miew.min.js';
-        const miewCssUrl = 'https://unpkg.com/miew@0.11.0/dist/Miew.min.css';
-        const threeJsUrl = 'https://unpkg.com/three@0.153.0/build/three.min.js';
-        const lodashUrl = 'https://unpkg.com/lodash@^4.17.21/lodash.js';
-        const xtermJsUrl = 'https://unpkg.com/xterm@5.3.0/lib/xterm.js';
-        const xtermCssUrl = 'https://unpkg.com/xterm@5.3.0/css/xterm.css';
-        const xtermFitUrl = 'https://unpkg.com/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js';
-        const xtermWebLinksUrl = 'https://unpkg.com/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.js';
+        // Use local bundled resources instead of CDN
+        const viewerJsUri = options.webview.asWebviewUri(
+            vscode.Uri.joinPath(this.extensionUri, 'media', 'viewer.js')
+        );
+        const miewCssUri = options.webview.asWebviewUri(
+            vscode.Uri.joinPath(this.extensionUri, 'media', 'miew.min.css')
+        );
+        const lodashUri = options.webview.asWebviewUri(
+            vscode.Uri.joinPath(this.extensionUri, 'media', 'lodash.js')
+        );
+        const xtermJsUri = options.webview.asWebviewUri(
+            vscode.Uri.joinPath(this.extensionUri, 'media', 'xterm.js')
+        );
+        const xtermCssUri = options.webview.asWebviewUri(
+            vscode.Uri.joinPath(this.extensionUri, 'media', 'xterm.css')
+        );
+        const xtermFitUri = options.webview.asWebviewUri(
+            vscode.Uri.joinPath(this.extensionUri, 'media', 'xterm-addon-fit.js')
+        );
+        const xtermWebLinksUri = options.webview.asWebviewUri(
+            vscode.Uri.joinPath(this.extensionUri, 'media', 'xterm-addon-web-links.js')
+        );
 
         // Build HTML content in parts to avoid template literal nesting issues
-        const headContent = this.getHeadContent(miewCdnUrl, miewCssUrl, threeJsUrl, lodashUrl, xtermJsUrl, xtermCssUrl, xtermFitUrl, xtermWebLinksUrl, options.hasTerminal);
+        const headContent = this.getHeadContent(viewerJsUri, miewCssUri, lodashUri, xtermJsUri, xtermCssUri, xtermFitUri, xtermWebLinksUri, options.hasTerminal);
         const bodyContent = this.getBodyContent(options);
         const scriptContent = this.getScriptContent(options);
 
@@ -227,21 +241,20 @@ ${scriptContent}
     /**
      * Get HTML head content
      */
-    private getHeadContent(miewCdnUrl: string, miewCssUrl: string, threeJsUrl: string, lodashUrl: string, xtermJsUrl: string, xtermCssUrl: string, xtermFitUrl: string, xtermWebLinksUrl: string, hasTerminal: boolean): string {
+    private getHeadContent(viewerJsUri: vscode.Uri, miewCssUri: vscode.Uri, lodashUri: vscode.Uri, xtermJsUri: vscode.Uri, xtermCssUri: vscode.Uri, xtermFitUri: vscode.Uri, xtermWebLinksUri: vscode.Uri, hasTerminal: boolean): string {
         return `<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CCView - Molecular Viewer</title>
     
     <!-- External Libraries -->
-    <script src="${lodashUrl}"></script>
-    <script src="${threeJsUrl}"></script>
-    <script src="${miewCdnUrl}"></script>
-    <link rel="stylesheet" href="${miewCssUrl}" />
-    <script src="${xtermJsUrl}"></script>
-    <link rel="stylesheet" href="${xtermCssUrl}" />
-    <script src="${xtermFitUrl}"></script>
-    <script src="${xtermWebLinksUrl}"></script>
+    <script src="${lodashUri}"></script>
+    <script src="${viewerJsUri}"></script>
+    <link rel="stylesheet" href="${miewCssUri}" />
+    <script src="${xtermJsUri}"></script>
+    <link rel="stylesheet" href="${xtermCssUri}" />
+    <script src="${xtermFitUri}"></script>
+    <script src="${xtermWebLinksUri}"></script>
     
     <style>
         ${this.getCommonStyles(hasTerminal)}
@@ -414,8 +427,13 @@ ${scriptContent}
         const terminalFunctions = options.hasTerminal ? `
             // Initialize terminal
             async function initializeTerminal() {
-                while (typeof Terminal === 'undefined') {
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                // Libraries are now bundled and available immediately
+                if (typeof Terminal === 'undefined') {
+                    // Only log in development environment
+                    if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'development') {
+                        console.warn('Terminal library not available');
+                    }
+                    return;
                 }
                 
                 terminal = new Terminal({
@@ -445,19 +463,24 @@ ${scriptContent}
                     terminal.open(document.getElementById('terminal'));
                     fitAddon.fit();
                     
-                    // 次のフレームでイベントリスナーを設定
-                    requestAnimationFrame(() => {
-                        terminal.onData((data) => {
-                            handleTerminalInput(data);
-                        });
-                        resolve();
+                    // 直接イベントリスナーを設定（不要な遅延を削除）
+                    terminal.onData((data) => {
+                        handleTerminalInput(data);
                     });
+                    resolve();
                 });
                 
+                // Terminal resize handling with throttling
+                let resizeThrottle = null;
                 window.addEventListener('resize', () => {
-                    if (terminalContainer.classList.contains('active')) {
-                        fitAddon.fit();
-                    }
+                    if (resizeThrottle) return;
+                    
+                    resizeThrottle = setTimeout(() => {
+                        if (terminalContainer.classList.contains('active')) {
+                            fitAddon.fit();
+                        }
+                        resizeThrottle = null;
+                    }, 50); // 50ms throttle
                 });
                 
                 // 初期化完了後にプロンプト表示
@@ -477,11 +500,9 @@ ${scriptContent}
                     
                     // Execute resize when terminal is shown
                     if (terminalContainer.classList.contains('active')) {
-                        setTimeout(() => {
-                            if (window.fitAddon) {
-                                window.fitAddon.fit();
-                            }
-                        }, 100);
+                        if (window.fitAddon) {
+                            window.fitAddon.fit();
+                        }
                     }
                 });` : '';
 
@@ -749,9 +770,13 @@ ${scriptContent}
             
             // Initialize miew viewer
             async function initializeMiewViewer() {
-                // Wait for miew to be available
-                while (typeof Miew === 'undefined') {
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                // Libraries are now bundled and available immediately
+                if (typeof Miew === 'undefined') {
+                    // Only log in development environment
+                    if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'development') {
+                        console.error('Miew library not available');
+                    }
+                    throw new Error('Miew library not available');
                 }
                 
                 // Create miew viewer with optimized settings
@@ -779,21 +804,17 @@ ${scriptContent}
                     // Set default representation for PDB files
                     ${isPDBFile ? `
                     // Apply default PDB representation (Cartoon + Secondary Structure)
-                    setTimeout(() => {
-                        if (viewer) {
-                            viewer.rep(0, { mode: 'CA', colorer: 'SS' });
-                        }
-                    }, 500);` : ''}
+                    if (viewer) {
+                        viewer.rep(0, { mode: 'CA', colorer: 'SS' });
+                    }` : ''}
                     
                     // Start rendering
                     viewer.run();
                     
                     // Initial resize handling
-                    setTimeout(() => {
-                        if (viewer && viewer._onResize) {
-                            viewer._onResize();
-                        }
-                    }, 100);
+                    if (viewer && viewer._onResize) {
+                        viewer._onResize();
+                    }
                 } else {
                     throw new Error('Failed to initialize miew viewer');
                 }
@@ -811,12 +832,19 @@ ${scriptContent}
                 
                 ${terminalToggle}
                 
-                // Complete resize handling
+                // Complete resize handling with debouncing
+                let resizeTimeout = null;
                 const resizeObserver = new ResizeObserver(() => {
-                    if (viewer && viewer._onResize) {
-                        viewer._onResize();
+                    if (resizeTimeout) {
+                        clearTimeout(resizeTimeout);
                     }
-                    ${terminalResize}
+                    resizeTimeout = setTimeout(() => {
+                        if (viewer && viewer._onResize) {
+                            viewer._onResize();
+                        }
+                        ${terminalResize}
+                        resizeTimeout = null;
+                    }, 100); // 100ms debounce
                 });
                 
                 resizeObserver.observe(miewContainer);

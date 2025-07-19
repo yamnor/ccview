@@ -3,6 +3,9 @@ dev/
 DEVELOPMENT.md
 .cursor/
 
+# Keep bundled media files for WebView
+!media/
+
 # Source files (compiled to out/)
 src/
 tsconfig.json
