@@ -1,37 +1,23 @@
 {
   "name": "ccview",
-  "displayName": "CCView - Computational Chemistry File Viewer",
-  "description": "Advanced 3D molecular visualization and analysis for VS Code. View quantum chemistry output files in stunning 3D, analyze molecular data with integrated terminal commands, and export results in multiple formats.",
-  "version": "0.1.0",
+  "displayName": "CCView - Comp Chem Viewer",
+  "description": "Molecular visualization and analysis for VS Code. View computational chemistry output files in 3D, analyze molecular data with integrated terminal commands, and export results in multiple formats.",
+  "version": "0.0.1",
   "engines": {
     "vscode": "^1.74.0"
   },
   "categories": [
     "Other",
-    "Visualization",
-    "Science"
+    "Visualization"
   ],
   "keywords": [
+    "science",
     "chemistry",
-    "molecular",
-    "visualization",
-    "quantum",
-    "computational",
-    "cclib",
-    "miew",
-    "gaussian",
-    "gamess",
-    "nwchem",
-    "qchem",
-    "psi4",
-    "turbomole",
-    "molpro",
-    "molcas",
-    "orca",
-    "pdb",
+    "molecule",
+    "protein",
+    "coordinates",
     "xyz",
-    "structure",
-    "analysis"
+    "pdb"
   ],
   "publisher": "yamnor",
   "repository": {
@@ -44,7 +30,7 @@
   },
   "icon": "images/icon.png",
   "galleryBanner": {
-    "color": "#C80000",
+    "color": "#000000",
     "theme": "dark"
   },
   "main": "./out/extension.js",
@@ -57,7 +43,7 @@
       },
       {
         "command": "ccview.parseFile",
-        "title": "Parse Computational Chemistry File",
+        "title": "Parse Comp Chem File",
         "category": "CCView"
       }
     ],
