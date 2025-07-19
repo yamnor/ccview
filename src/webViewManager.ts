@@ -842,12 +842,19 @@ ${scriptContent}
                         if (viewer && viewer._onResize) {
                             viewer._onResize();
                         }
-                        ${terminalResize}
+                        // ターミナルリサイズ処理を追加
+                        if (terminalContainer && terminalContainer.classList.contains('active') && window.fitAddon) {
+                            window.fitAddon.fit();
+                        }
                         resizeTimeout = null;
                     }, 100); // 100ms debounce
                 });
                 
                 resizeObserver.observe(miewContainer);
+                // ターミナルコンテナも監視対象に追加
+                if (terminalContainer) {
+                    resizeObserver.observe(terminalContainer);
+                }
             }
             
 
@@ -994,20 +1001,14 @@ ${scriptContent}
             z-index: 1000;
             display: none;
             transition: all 0.3s ease;
+            min-width: 250px;
+            min-height: 250px;
+            max-width: calc(100vw - 30px);
+            max-height: calc(50vh - 80px);
             width: 50vw;
-            height: 25vh;
-        }
-        
-        .terminal-container.active {
-            display: block;
-        }
-
-        #terminal .xterm {
-            padding: 10px;
-        }
-
-        #terminal .xterm-viewport {
-            scrollbar-width: none;
+            height: calc(50vh - 80px);
+            resize: both;
+            overflow: hidden;
             border-radius: 10px;
             background: rgba(0, 0, 0, 0.7) !important;
             backdrop-filter: blur(4px);
@@ -1015,9 +1016,32 @@ ${scriptContent}
             border: 1px solid rgba(255, 255, 255, 0.15);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
+        
+        .terminal-container.active {
+            display: block;
+        }
+
+        #terminal .xterm {
+            padding: 10px 15px;
+        }
+
+        #terminal .xterm-viewport {
+            scrollbar-width: none;
+            background: transparent !important;
+        }
 
         #terminal canvas {
             background: transparent !important;
+        }
+
+        .terminal-container::-webkit-resizer {
+            background-color: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            cursor: nwse-resize;
+        }
+
+        .terminal-container:active {
+            transition: none;
         }
         ` : '';
 
