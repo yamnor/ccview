@@ -11,7 +11,7 @@ CCView combines **cclib** (computational chemistry parsing) and **miew** (3D mol
 - **Interactive 3D Molecular Visualization** - Rotate, zoom, and explore molecular structures
 - **Comprehensive Data Analysis** - Extract energies, frequencies, orbitals, and more
 - **Integrated Terminal Interface** - Use ccget/ccwrite commands directly in VS Code
-- **Smart File Detection** - Automatically recognizes 17+ computational chemistry formats
+- **Smart File Detection** - Automatically recognizes computational chemistry formats
 - **Multiple Representation Modes** - Ball & stick, licorice, cartoon, and more
 
 ## Installation
@@ -22,12 +22,12 @@ CCView combines **cclib** (computational chemistry parsing) and **miew** (3D mol
    pip install cclib numpy scipy
    ```
 3. Ensure VS Code Python extension is installed and configured
-4. **Internet connection required** - CCView downloads visualization libraries (miew, xterm.js) from CDN when first launched
+4. **Offline support** - CCView bundles all visualization libraries (miew, xterm.js) locally for offline operation
 
 ## Quick Start
 
 1. Open any supported file (.log, .out, .pdb, .cif, .xyz)
-2. Right-click in the explorer and select "Open with CCView"
+2. Right-click in the explorer and select "Open CCView"
 3. Explore the 3D viewer and terminal interface
 
 ## Supported File Formats
@@ -37,17 +37,20 @@ CCView combines **cclib** (computational chemistry parsing) and **miew** (3D mol
 |----------|------------|-------------|
 | **Gaussian** | `.log`, `.out` | Most widely used |
 | **GAMESS** | `.log`, `.out` | American version |
-| **ORCA** | `.out` | Free version available |
-| **NWChem** | `.out` | Open source |
-| **Psi4** | `.out` | Open source |
-| **Q-Chem** | `.out` | Commercial |
-| **Turbomole** | `.out` | Commercial |
-| **Molpro** | `.out` | Commercial |
-| **ADF** | `.out` | Amsterdam Density Functional |
-| **CFOUR** | `.out` | Coupled-Cluster |
-| **DALTON** | `.out` | Open source |
-| **MOPAC** | `.out` | Semi-empirical |
-| **XTB** | `.out` | Fast calculation |
+| **GAMESS-UK** | `.log`, `.out` | UK version |
+| **ORCA** | `.log`, `.out` | Free version available |
+| **NWChem** | `.log`, `.out` | Open source |
+| **Psi4** | `.log`, `.out` | Open source |
+| **Q-Chem** | `.log`, `.out` | Commercial |
+| **Turbomole** | `.log`, `.out` | Commercial |
+| **Molpro** | `.log`, `.out` | Commercial |
+| **Molcas** | `.log`, `.out` | Commercial |
+| **ADF** | `.log`, `.out` | Amsterdam Density Functional |
+| **CFOUR** | `.log`, `.out` | Coupled-Cluster |
+| **DALTON** | `.log`, `.out` | Open source |
+| **Jaguar** | `.log`, `.out` | Commercial |
+| **MOPAC** | `.log`, `.out` | Semi-empirical |
+| **XTB** | `.log`, `.out` | Fast calculation |
 
 ### Direct Structure Files
 | Format | Extension | Description |
@@ -171,7 +174,7 @@ miew color secondary        # Color by secondary structure
 | **cclib Not Installed** | Run `pip install cclib` |
 | **File Not Recognized** | Check file extension and content validity |
 | **Terminal Not Responding** | Click Terminal button, press Enter to refresh |
-| **3D Viewer Not Loading** | Check internet connection (required for CDN libraries), verify file contains valid data |
+| **3D Viewer Not Loading** | Verify file contains valid data, check browser console for errors |
 
 ---
 
@@ -179,7 +182,7 @@ miew color secondary        # Color by secondary structure
 
 ### Project Structure
 ```
-ccview/
+ccview-extension/
 ├── src/                    # TypeScript source files
 │   ├── extension.ts       # Main extension entry point
 │   ├── fileDetector.ts    # File format detection
@@ -189,6 +192,10 @@ ccview/
 │   └── terminalManager.ts # Terminal interface management
 ├── python/                # Python backend
 │   └── parser.py         # cclib integration
+├── media/                # Bundled libraries
+│   ├── viewer.js         # Miew viewer
+│   ├── xterm.js          # Terminal emulator
+│   └── ...               # Other bundled files
 └── package.json          # Extension manifest
 ```
 
@@ -196,8 +203,8 @@ ccview/
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yamnor/ccview.git
-   cd ccview
+   git clone https://github.com/yamnor/ccview-extension.git
+   cd ccview-extension
    ```
 
 2. Install dependencies:
@@ -205,9 +212,10 @@ ccview/
    npm install
    ```
 
-3. Compile TypeScript:
+3. Compile TypeScript and bundle libraries:
    ```bash
    npm run compile
+   npm run bundle
    ```
 
 4. Watch for changes:
@@ -234,9 +242,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-- **Issues**: Report bugs and request features on [GitHub](https://github.com/yamnor/ccview/issues)
-- **Documentation**: Check the [Wiki](https://github.com/yamnor/ccview/wiki)
-- **Community**: Join discussions in [GitHub Discussions](https://github.com/yamnor/ccview/discussions)
+- **Issues**: Report bugs and request features on [GitHub](https://github.com/yamnor/ccview-extension/issues)
+- **Documentation**: Check the [Wiki](https://github.com/yamnor/ccview-extension/wiki)
+- **Community**: Join discussions in [GitHub Discussions](https://github.com/yamnor/ccview-extension/discussions)
 
 ---
 
