@@ -107,7 +107,6 @@ export class PythonManager {
             return undefined;
 
         } catch (error) {
-            console.error('Error getting Python path:', error);
             return undefined;
         }
     }
@@ -144,7 +143,7 @@ export class PythonManager {
                 return match ? match[1] : undefined;
             }
         } catch (error) {
-            console.error('Error getting Python version:', error);
+            // Python version check failed
         }
 
         return undefined;
