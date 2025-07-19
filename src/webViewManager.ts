@@ -49,7 +49,7 @@ export class WebViewManager {
         // Create new panel
         const panel = vscode.window.createWebviewPanel(
             'ccview',
-            'CCView - Molecular Viewer',
+            'CCView',
             vscode.ViewColumn.One,
             {
                 enableScripts: true,
@@ -406,9 +406,7 @@ ${scriptContent}
                         sourceType: 'immediate',
                         fileType: fileType 
                     });
-                    console.log('File loaded successfully');
                 } catch (error) {
-                    console.error('File loading error:', error);
                     showError('Failed to load file: ' + error.message);
                 }
             }`;
@@ -727,7 +725,7 @@ ${scriptContent}
                     container: miewContainer,
                     settings: {
                         autoPreset: false,
-                        bg: { color: 0x000000 },
+                        bg: { color: 0x002c36 },
                         fog: { enabled: false },
                         fps: false,
                         axes: false,
@@ -960,7 +958,7 @@ ${scriptContent}
 
         #terminal .xterm-screen {
             width: 100% !important;
-            background: rgba(0, 0, 0, 0.7) !important;
+            background: rgba(2, 33, 43, 0.7) !important;
             padding: 4px;
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
