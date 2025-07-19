@@ -2,6 +2,8 @@
 
 CCView is a VS Code extension that provides comprehensive computational chemistry output file viewing capabilities. It combines the robust parsing power of cclib with the advanced 3D molecular visualization of miew, offering an integrated terminal interface for computational chemistry workflows.
 
+![](https://i.gyazo.com/04d87b2b1802baf32b5af7e5a6ac228f.png)
+
 ## ✨ Features
 
 ### 🔬 **Advanced Molecular Visualization**
@@ -67,8 +69,8 @@ CCView is a VS Code extension that provides comprehensive computational chemistr
    - Install from VS Code Marketplace
    - Or clone and install locally:
    ```bash
-   git clone https://github.com/your-repo/ccview-extension.git
-   cd ccview-extension
+   git clone https://github.com/yamnor/ccview.git
+   cd ccview
    npm install
    npm run compile
    ```
