@@ -25,9 +25,19 @@ export class WebViewManager {
     private extensionUri: vscode.Uri;
     private currentPanel: vscode.WebviewPanel | undefined;
     private terminalManager: TerminalManager | undefined;
+    
+    // Output channels for structured data
+    private textChannel: vscode.OutputChannel;
+    private jsonChannel: vscode.OutputChannel;
+    private logChannel: vscode.LogOutputChannel;
 
     constructor(extensionUri: vscode.Uri) {
         this.extensionUri = extensionUri;
+        
+        // Initialize output channels
+        this.textChannel = vscode.window.createOutputChannel('CCView');
+        this.jsonChannel = vscode.window.createOutputChannel('CCView JSON', 'json');
+        this.logChannel = vscode.window.createOutputChannel('CCView Log', { log: true });
     }
 
     /**
@@ -163,7 +173,70 @@ export class WebViewManager {
      */
     private async handleCommand(command: any): Promise<void> {
         
-        if (this.terminalManager && command.type === 'terminal') {
+        if (command.type === 'miew_input') {
+            // Handle miew command output
+            this.logChannel.info(`Miew command executed: ${command.content}`);
+            this.textChannel.appendLine(`> ${command.content}`);
+            this.textChannel.show();
+            
+        } else if (command.type === 'miew_output') {
+            // Handle miew command result
+            if (command.success) {
+                if (command.content && command.content.trim()) {
+                    this.textChannel.appendLine(command.content);
+                }
+            } else {
+                this.textChannel.appendLine(`Error: ${command.content}`);
+            }
+            this.textChannel.show();
+            
+        } else if (command.type === 'user_input' && this.terminalManager) {
+            try {
+                // Log command execution
+                this.logChannel.info(`Command executed: ${command.content}`);
+                
+                // Execute command
+                const terminalCommand = this.terminalManager.parseCommand(command.content);
+                const outputs = await this.terminalManager.executeCommand(terminalCommand);
+                
+                // Output to appropriate channels
+                for (const output of outputs) {
+                    const targetChannel = this.determineOutputChannel(output);
+                    
+                    // Show command
+                    targetChannel.appendLine(`> ${command.content}`);
+                    
+                    // Show result
+                    if (output.type === 'stdout') {
+                        const formattedContent = this.formatOutput(output, command.content);
+                        targetChannel.appendLine(formattedContent);
+                    } else if (output.type === 'stderr') {
+                        targetChannel.appendLine(`Error: ${output.content}`);
+                    } else if (output.type === 'error') {
+                        targetChannel.appendLine(`Error: ${output.content}`);
+                    }
+                    
+                    // Show channel and ensure it's visible
+                    targetChannel.show();
+                    // VS Code automatically scrolls to bottom when new content is added
+                }
+                
+                // Send outputs back to WebView (existing functionality)
+                for (const output of outputs) {
+                    await this.sendMessage({
+                        type: 'terminal_output',
+                        payload: output,
+                        timestamp: Date.now()
+                    });
+                }
+                
+            } catch (error) {
+                this.logChannel.error(`Command execution failed: ${error}`);
+                this.textChannel.appendLine(`> ${command.content}`);
+                this.textChannel.appendLine(`Error: ${error}`);
+                this.textChannel.show();
+            }
+        } else if (this.terminalManager && command.type === 'terminal') {
             try {
                 const terminalCommand = this.terminalManager.parseCommand(command.command);
                 
@@ -188,8 +261,159 @@ export class WebViewManager {
                     timestamp: Date.now()
                 });
             }
-        } else {
         }
+    }
+
+    /**
+     * Determine which output channel to use for a given terminal output
+     */
+    private determineOutputChannel(output: TerminalOutput): vscode.OutputChannel {
+        // Check if content is JSON data
+        if (this.isJsonData(output.content)) {
+            return this.jsonChannel;
+        }
+        
+        // Check if content is XML data
+        if (this.isXmlData(output.content)) {
+            return this.jsonChannel; // Use JSON channel for XML syntax highlighting
+        }
+        
+        // Default to text channel for all other content
+        return this.textChannel;
+    }
+
+    /**
+     * Check if content is JSON data
+     */
+    private isJsonData(content: string): boolean {
+        try {
+            JSON.parse(content);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * Check if content is XML data
+     */
+    private isXmlData(content: string): boolean {
+        const trimmed = content.trim();
+        return trimmed.startsWith('<') && trimmed.includes('>');
+    }
+
+    /**
+     * Format output content for display in output channels
+     */
+    private formatOutput(output: TerminalOutput, command: string): string {
+        // Handle clear command specially
+        if (command === 'clear') {
+            // Clear all output channels
+            this.textChannel.clear();
+            this.jsonChannel.clear();
+            this.logChannel.clear();
+            return 'Terminal cleared';
+        }
+        
+        // ccget command formatting
+        if (command.startsWith('ccget ')) {
+            return this.formatCcgetOutput(output);
+        }
+        
+        // ccwrite command formatting
+        if (command.startsWith('ccwrite ')) {
+            return this.formatCcwriteOutput(output);
+        }
+        
+        // miew command formatting
+        if (command.startsWith('miew ')) {
+            return this.formatMiewOutput(output);
+        }
+        
+        // Default formatting
+        return output.content;
+    }
+
+    /**
+     * Format ccget command output
+     */
+    private formatCcgetOutput(output: TerminalOutput): string {
+        // TerminalManager already formats the output, just return as is
+        return output.content;
+    }
+
+    /**
+     * Format ccwrite command output
+     */
+    private formatCcwriteOutput(output: TerminalOutput): string {
+        // ccwrite often returns JSON or structured data
+        if (this.isJsonData(output.content)) {
+            try {
+                const parsed = JSON.parse(output.content);
+                return JSON.stringify(parsed, null, 2);
+            } catch {
+                return output.content;
+            }
+        }
+        return output.content;
+    }
+
+    /**
+     * Format miew command output
+     */
+    private formatMiewOutput(output: TerminalOutput): string {
+        // miew commands typically return simple status messages
+        return output.content;
+    }
+
+    /**
+     * Format atom coordinates for better readability
+     * TODO: Commented out to use generic data type formatter
+     */
+    /*
+    private formatAtomCoords(coords: number[][][]): string {
+        let result = 'atomcoords:\n';
+        
+        coords.forEach((step, stepIndex) => {
+            result += `\nStep ${stepIndex + 1}:\n`;
+            step.forEach((atom, atomIndex) => {
+                const [x, y, z] = atom;
+                result += `  Atom ${atomIndex + 1}: [${x.toFixed(6)}, ${y.toFixed(6)}, ${z.toFixed(6)}]\n`;
+            });
+        });
+        
+        return result;
+    }
+    */
+
+
+
+    /**
+     * Format general array data for better readability
+     */
+    private formatArrayData(propertyName: string, data: any[]): string {
+        let result = `${propertyName}:\n`;
+        
+        if (data.length === 0) {
+            return result + '  (empty array)\n';
+        }
+        
+        // Check if it's a simple array of numbers
+        if (data.every(item => typeof item === 'number')) {
+            result += '  [' + data.map(num => num.toFixed(6)).join(', ') + ']\n';
+            return result;
+        }
+        
+        // Check if it's an array of arrays (2D)
+        if (data.every(item => Array.isArray(item) && item.every(subItem => typeof subItem === 'number'))) {
+            data.forEach((row, index) => {
+                result += `  [${index}]: [${row.map(num => num.toFixed(6)).join(', ')}]\n`;
+            });
+            return result;
+        }
+        
+        // Default formatting for complex arrays
+        return `${propertyName}:\n${JSON.stringify(data, null, 2)}`;
     }
 
     /**
@@ -197,7 +421,6 @@ export class WebViewManager {
      */
     private async getUnifiedViewerContent(options: {
         webview: vscode.Webview;
-        hasTerminal: boolean;
         dataSource: 'molecular' | 'direct';
         data: MolecularData | string;
         filePath?: string;
@@ -212,21 +435,9 @@ export class WebViewManager {
         const lodashUri = options.webview.asWebviewUri(
             vscode.Uri.joinPath(this.extensionUri, 'media', 'lodash.js')
         );
-        const xtermJsUri = options.webview.asWebviewUri(
-            vscode.Uri.joinPath(this.extensionUri, 'media', 'xterm.js')
-        );
-        const xtermCssUri = options.webview.asWebviewUri(
-            vscode.Uri.joinPath(this.extensionUri, 'media', 'xterm.css')
-        );
-        const xtermFitUri = options.webview.asWebviewUri(
-            vscode.Uri.joinPath(this.extensionUri, 'media', 'xterm-addon-fit.js')
-        );
-        const xtermWebLinksUri = options.webview.asWebviewUri(
-            vscode.Uri.joinPath(this.extensionUri, 'media', 'xterm-addon-web-links.js')
-        );
 
         // Build HTML content in parts to avoid template literal nesting issues
-        const headContent = this.getHeadContent(viewerJsUri, miewCssUri, lodashUri, xtermJsUri, xtermCssUri, xtermFitUri, xtermWebLinksUri, options.hasTerminal);
+        const headContent = this.getHeadContent(viewerJsUri, miewCssUri, lodashUri);
         const bodyContent = this.getBodyContent(options);
         const scriptContent = this.getScriptContent(options);
 
@@ -241,7 +452,7 @@ ${scriptContent}
     /**
      * Get HTML head content
      */
-    private getHeadContent(viewerJsUri: vscode.Uri, miewCssUri: vscode.Uri, lodashUri: vscode.Uri, xtermJsUri: vscode.Uri, xtermCssUri: vscode.Uri, xtermFitUri: vscode.Uri, xtermWebLinksUri: vscode.Uri, hasTerminal: boolean): string {
+    private getHeadContent(viewerJsUri: vscode.Uri, miewCssUri: vscode.Uri, lodashUri: vscode.Uri): string {
         return `<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -251,17 +462,12 @@ ${scriptContent}
     <script src="${lodashUri}"></script>
     <script src="${viewerJsUri}"></script>
     <link rel="stylesheet" href="${miewCssUri}" />
-    <script src="${xtermJsUri}"></script>
-    <link rel="stylesheet" href="${xtermCssUri}" />
-    <script src="${xtermFitUri}"></script>
-    <script src="${xtermWebLinksUri}"></script>
     
     <style>
-        ${this.getCommonStyles(hasTerminal)}
+        ${this.getCommonStyles()}
     </style>
     
-    <!-- VS Code Codicon CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@vscode/codicons@0.0.35/dist/codicon.css">
+
 </head>`;
     }
 
@@ -269,77 +475,28 @@ ${scriptContent}
      * Get HTML body content
      */
     private getBodyContent(options: {
-        hasTerminal: boolean;
         dataSource: 'molecular' | 'direct';
         filePath?: string;
     }): string {
-        const terminalButton = options.hasTerminal ? `
-                    <button id="toggle-terminal" class="icon-button" title="Terminal">
-                        <span class="codicon codicon-terminal"></span>
-                        Terminal
-                    </button>` : '';
-
-
-
-        const terminalContainer = options.hasTerminal ? `
-        <div id="terminal-container" class="terminal-container">
-            <div id="terminal"></div>
-        </div>` : '';
-
-        // Check if this is a PDB file for additional representation options
-        const isPDBFile = options.dataSource === 'direct' && 
-                         options.filePath?.toLowerCase().endsWith('.pdb');
-
-        // Generate representation options based on file type
-        const representationOptions = isPDBFile ? `
+        // Generate representation options (always show all options)
+        const representationOptions = `
+                        <option value="BS" selected>Ball & Stick</option>
                         <option value="LC">Licorice</option>
-                        <option value="BS">Ball & Stick</option>
                         <option value="VW">Van der Waals</option>
                         <option value="LN">Lines</option>
-                        <option value="CA" selected>Cartoon</option>
-                        <option value="TU">Tube</option>` : `
-                        <option value="LC">Licorice</option>
-                        <option value="BS" selected>Ball & Stick</option>
-                        <option value="VW">Van der Waals</option>
-                        <option value="LN">Lines</option>`;
+                        <option value="CA">Cartoon</option>
+                        <option value="TU">Tube</option>`;
 
-        // Generate color options based on file type
-        const colorOptions = isPDBFile ? `
-                        <option value="EL">Element</option>
-                        <option value="CH">Chain</option>
-                        <option value="SS" selected>Structure</option>
+        // Generate color options (always show all options)
+        const colorOptions = `
+                        <option value="EL" selected>Element</option>
+                        <option value="SS">Structure</option>
                         <option value="RE">Residue</option>
-                        <option value="UN">Uniform</option>` : `
-                        <option value="EL" selected>Element</option>`;
-
-        // Generate color control group based on file type
-        const colorControlGroup = isPDBFile ? `
-                <div class="control-group">
-                    <label>Color:</label>
-                    <select id="colorer">
-                        ${colorOptions}
-                    </select>
-                </div>` : '';
+                        <option value="CH">Chain</option>
+                        <option value="UN">Uniform</option>`;
 
         return `<body>
     <div class="container">
-        <div class="header">
-            <div class="controls">
-                <div class="control-group">
-                    <label>Style:</label>
-                    <select id="representation">
-                        ${representationOptions}
-                    </select>
-                </div>
-                
-                ${colorControlGroup}
-                
-                <div class="control-group">
-                    ${terminalButton}
-                </div>
-            </div>
-        </div>
-        
         <div class="viewer-container">
             <div id="miew-container" class="miew-container"></div>
             
@@ -350,7 +507,27 @@ ${scriptContent}
             <div id="error" class="error" style="display: none;"></div>
         </div>
         
-        ${terminalContainer}
+        <div class="footer">
+            <div class="controls">
+                <div class="control-group">
+                    <input type="text" id="user-input" placeholder="CCView: Enter command..." />
+                </div>
+                
+                <div class="control-group">
+                    <label>Style:</label>
+                    <select id="representation">
+                        ${representationOptions}
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Color:</label>
+                    <select id="colorer">
+                        ${colorOptions}
+                    </select>
+                </div>
+            </div>
+        </div>
     </div>
 </body>`;
     }
@@ -359,7 +536,6 @@ ${scriptContent}
      * Get JavaScript content
      */
     private getScriptContent(options: {
-        hasTerminal: boolean;
         dataSource: 'molecular' | 'direct';
         data: MolecularData | string;
         filePath?: string;
@@ -368,28 +544,13 @@ ${scriptContent}
             // Molecular data from VS Code extension
             const molecularData = ${JSON.stringify(options.data)};` : '';
 
-        const terminalVars = options.hasTerminal ? 'let terminal = null; let fitAddon = null;' : '';
-        const terminalContainerVar = options.hasTerminal ? 'const terminalContainer = document.getElementById("terminal-container");' : '';
-        const toggleTerminalButtonVar = options.hasTerminal ? 'const toggleTerminalButton = document.getElementById("toggle-terminal");' : '';
-
-        // Check if this is a PDB file for additional controls
-        const isPDBFile = options.dataSource === 'direct' && 
-                         options.filePath?.toLowerCase().endsWith('.pdb');
-        const colorerVar = isPDBFile ? 'const colorerSelect = document.getElementById("colorer");' : '';
+        const colorerVar = 'const colorerSelect = document.getElementById("colorer");';
 
         const molecularDataCheck = options.dataSource === 'molecular' ? `
                     // Check if molecular data is valid
                     if (!molecularData.success) {
                         throw new Error(molecularData.error || 'Failed to parse molecular data');
                     }` : '';
-
-        const terminalInit = options.hasTerminal ? `
-                    // Initialize terminal
-                    await initializeTerminal();` : '';
-
-        const updateInfoPanel = options.dataSource === 'molecular' ? `
-                    // Update info panel
-                    updateInfoPanel();` : '';
 
         const molecularDataLoad = options.dataSource === 'molecular' ? `
                     // Load molecule using XYZ content from cclib
@@ -424,98 +585,8 @@ ${scriptContent}
                 }
             }`;
 
-        const terminalFunctions = options.hasTerminal ? `
-            // Initialize terminal
-            async function initializeTerminal() {
-                // Libraries are now bundled and available immediately
-                if (typeof Terminal === 'undefined') {
-                    // Only log in development environment
-                    if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'development') {
-                        console.warn('Terminal library not available');
-                    }
-                    return;
-                }
-                
-                terminal = new Terminal({
-                    cursorBlink: true,
-                    fontSize: 12,
-                    fontFamily: 'Consolas, "Courier New", monospace',
-                    theme: {
-                        background: 'transparent',
-                        foreground: '#ffffff',
-                        cursor: '#ffffff',
-                        selection: 'rgba(38, 79, 120, 0.8)'
-                    },
-                    allowTransparency: true
-                });
-                
-                const fitAddon = new FitAddon.FitAddon();
-                const webLinksAddon = new WebLinksAddon.WebLinksAddon();
-                
-                terminal.loadAddon(fitAddon);
-                terminal.loadAddon(webLinksAddon);
-                
-                // Store fitAddon globally for access in toggle function
-                window.fitAddon = fitAddon;
-                
-                // DOM接続とサイズ調整を待つ
-                await new Promise(resolve => {
-                    terminal.open(document.getElementById('terminal'));
-                    fitAddon.fit();
-                    
-                    // 直接イベントリスナーを設定（不要な遅延を削除）
-                    terminal.onData((data) => {
-                        handleTerminalInput(data);
-                    });
-                    resolve();
-                });
-                
-                // Terminal resize handling with throttling
-                let resizeThrottle = null;
-                window.addEventListener('resize', () => {
-                    if (resizeThrottle) return;
-                    
-                    resizeThrottle = setTimeout(() => {
-                        if (terminalContainer.classList.contains('active')) {
-                            fitAddon.fit();
-                        }
-                        resizeThrottle = null;
-                    }, 50); // 50ms throttle
-                });
-                
-                // 初期化完了後にプロンプト表示
-                terminal.writeln('\\x1b[1;32mCCView Terminal\\x1b[0m');
-                terminal.writeln('Type \\x1b[1;33mhelp\\x1b[0m for available commands.');
-                terminal.writeln('');
-                terminal.write('\\x1b[1;32m>\\x1b[0m ');
-                
-                // フォーカスを設定
-                terminal.focus();
-            }` : '';
-
-        const terminalToggle = options.hasTerminal ? `
-                // Toggle terminal
-                toggleTerminalButton.addEventListener('click', () => {
-                    terminalContainer.classList.toggle('active');
-                    
-                    // Execute resize when terminal is shown
-                    if (terminalContainer.classList.contains('active')) {
-                        if (window.fitAddon) {
-                            window.fitAddon.fit();
-                        }
-                    }
-                });` : '';
-
-        const terminalResize = options.hasTerminal ? `
-                    // Handle terminal resize as well
-                    if (terminalContainer.classList.contains('active') && window.fitAddon) {
-                        window.fitAddon.fit();
-                    }` : '';
-
-
-
-        // Generate event handlers based on file type
-        const representationEventHandler = isPDBFile ? `
+        // Generate event handlers (always support both representation and colorer)
+        const representationEventHandler = `
                 // Representation change with colorer support
                 representationSelect.addEventListener('change', (e) => {
                     if (viewer) {
@@ -523,16 +594,9 @@ ${scriptContent}
                         const colorer = colorerSelect ? colorerSelect.value : 'EL';
                         viewer.rep(0, { mode: mode, colorer: colorer });
                     }
-                });` : `
-                // Representation change
-                representationSelect.addEventListener('change', (e) => {
-                    if (viewer) {
-                        const mode = e.target.value;
-                        viewer.rep(0, { mode: mode });
-                    }
                 });`;
 
-        const colorerEventHandler = isPDBFile ? `
+        const colorerEventHandler = `
                 // Colorer change
                 colorerSelect.addEventListener('change', (e) => {
                     if (viewer) {
@@ -540,189 +604,7 @@ ${scriptContent}
                         const colorer = e.target.value;
                         viewer.rep(0, { mode: mode, colorer: colorer });
                     }
-                });` : '';
-
-        const terminalMessageHandling = options.hasTerminal ? `
-            // Message handling for VS Code communication
-            window.addEventListener('message', event => {
-                const message = event.data;
-                
-                switch (message.type) {
-                    case 'command':
-                        handleCommand(message.payload);
-                        break;
-                    case 'data':
-                        handleData(message.payload);
-                        break;
-                    case 'terminal_output':
-                        handleTerminalOutput(message.payload);
-                        break;
-                    default:
-                }
-            });
-            
-            // Handle terminal input
-            let currentLine = '';
-            
-            function handleTerminalInput(data) {
-                if (data === '\\r') {
-                    // Enter key pressed
-                    terminal.writeln('');
-                    executeTerminalCommand(currentLine);
-                    currentLine = '';
-                    // Don't add prompt here - it will be added after command execution
-                } else if (data === '\\u007f') {
-                    // Backspace
-                    if (currentLine.length > 0) {
-                        currentLine = currentLine.slice(0, -1);
-                        terminal.write('\\b \\b');
-                    }
-                } else if (data.charCodeAt(0) < 32) {
-                    // Control characters (except backspace)
-                    return;
-                } else {
-                    // Regular character
-                    currentLine += data;
-                    terminal.write(data);
-                }
-            }
-            
-            // Execute terminal command
-            async function executeTerminalCommand(command) {
-                if (!command.trim()) {
-                    // Show prompt only for empty commands
-                    terminal.write('\\x1b[1;32m>\\x1b[0m ');
-                    return;
-                }
-                
-                // Check if it's a miew command
-                if (command.toLowerCase().startsWith('miew ')) {
-                    const miewCommand = command.substring(5); // Remove 'miew ' prefix
-                    executeMiewScript(miewCommand);
-                } else {
-                    // Send command to VS Code extension
-                    sendMessage('command', {
-                        type: 'terminal',
-                        command: command
-                    });
-                }
-            }
-            
-            // Execute miew script
-            function executeMiewScript(scriptCommand) {
-                if (viewer && typeof viewer.script === 'function') {
-                    try {
-                        viewer.script(scriptCommand, 
-                            (str) => {
-                                // Success callback
-                                if (terminal) {
-                                    const normalizedContent = str
-                                        .replace(/\\r\\n/g, '\\n')
-                                        .replace(/\\r/g, '\\n');
-                                    
-                                    const lines = normalizedContent.split('\\n');
-                                    for (const line of lines) {
-                                        if (line.trim() !== '') {
-                                            terminal.writeln(line);
-                                        }
-                                    }
-                                    terminal.write('\\x1b[1;32m>\\x1b[0m ');
-                                }
-                            }, 
-                            (str) => {
-                                // Error callback
-                                if (terminal) {
-                                    const normalizedContent = str
-                                        .replace(/\\r\\n/g, '\\n')
-                                        .replace(/\\r/g, '\\n');
-                                    
-                                    const lines = normalizedContent.split('\\n');
-                                    for (const line of lines) {
-                                        if (line.trim() !== '') {
-                                            terminal.writeln(\`\\x1b[1;31mError: \${line}\\x1b[0m\`);
-                                        }
-                                    }
-                                    terminal.write('\\x1b[1;32m>\\x1b[0m ');
-                                }
-                            }
-                        );
-                        
-                    } catch (err) {
-                        if (terminal) {
-                            terminal.writeln(\`\\x1b[1;31mError: \${err.message}\\x1b[0m\`);
-                            terminal.write('\\x1b[1;32m>\\x1b[0m ');
-                        }
-                    }
-                } else {
-                    if (terminal) {
-                        terminal.writeln('\\x1b[1;31mError: Miew viewer not available\\x1b[0m');
-                        terminal.write('\\x1b[1;32m>\\x1b[0m ');
-                    }
-                }
-            }
-            
-            // Handle commands from VS Code
-            function handleCommand(command) {
-                // TODO: Implement command handling
-            }
-            
-            // Handle data from VS Code
-            function handleData(data) {
-                // TODO: Implement data handling
-            }
-            
-            // Handle terminal output from VS Code
-            function handleTerminalOutput(output) {
-                if (terminal) {
-                    if (output.type === 'stdout') {
-                        const normalizedContent = output.content
-                            .replace(/\\r\\n/g, '\\n')
-                            .replace(/\\r/g, '\\n');
-                        
-                        const lines = normalizedContent.split('\\n');
-                        for (let i = 0; i < lines.length; i++) {
-                            if (i === lines.length - 1 && lines[i] === '') {
-                                // Skip empty last line to avoid extra newline
-                                break;
-                            }
-                            terminal.writeln(lines[i]);
-                        }
-                    } else if (output.type === 'stderr') {
-                        terminal.writeln(\`\\x1b[1;31m\${output.content}\\x1b[0m\`);
-                    } else if (output.type === 'error') {
-                        terminal.writeln(\`\\x1b[1;31mError: \${output.content}\\x1b[0m\`);
-                    }
-                    // Add prompt after all output is complete
-                    terminal.write('\\x1b[1;32m>\\x1b[0m ');
-                } else {
-                }
-            }
-            
-            // Initialize VS Code API
-            const vscode = acquireVsCodeApi();
-            
-            // Send message to VS Code
-            function sendMessage(type, payload) {
-                try {
-                    vscode.postMessage({
-                        type: type,
-                        payload: payload,
-                        timestamp: Date.now()
-                    });
-                } catch (error) {
-                    // Fallback: try to use window.vscode if available
-                    if (window.vscode) {
-                        try {
-                            window.vscode.postMessage({
-                                type: type,
-                                payload: payload,
-                                timestamp: Date.now()
-                            });
-                        } catch (fallbackError) {
-                        }
-                    }
-                }
-            }` : '';
+                });`;
 
         return `<script>
         (function() {
@@ -730,18 +612,19 @@ ${scriptContent}
             
             // Global variables
             let viewer = null;
-            ${terminalVars}
+            let commandExecuting = false; // Flag to control focus restoration
             
             // DOM elements
             const miewContainer = document.getElementById('miew-container');
             const loadingElement = document.getElementById('loading');
             const errorElement = document.getElementById('error');
-            ${terminalContainerVar}
             
             // Control elements
             const representationSelect = document.getElementById('representation');
-            ${toggleTerminalButtonVar}
             ${colorerVar}
+            
+            // Input elements
+            const userInput = document.getElementById('user-input');
             
             // Initialize the application
             async function initialize() {
@@ -751,12 +634,8 @@ ${scriptContent}
                     // Initialize miew viewer
                     await initializeMiewViewer();
                     
-                    ${terminalInit}
-                    
                     // Setup event listeners
                     setupEventListeners();
-                    
-
                     
                     // Hide loading
                     loadingElement.style.display = 'none';
@@ -791,8 +670,8 @@ ${scriptContent}
                         resolution: 'medium'
                     },
                     reps: [{
-                        mode: '${isPDBFile ? 'CA' : 'BS'}',
-                        colorer: '${isPDBFile ? 'SS' : 'EL'}',
+                        mode: 'BS',
+                        colorer: 'EL',
                         selector: 'all',
                         material: 'SF'
                     }]
@@ -800,13 +679,6 @@ ${scriptContent}
                 
                 if (viewer.init()) {
                     ${molecularDataLoad}
-                    
-                    // Set default representation for PDB files
-                    ${isPDBFile ? `
-                    // Apply default PDB representation (Cartoon + Secondary Structure)
-                    if (viewer) {
-                        viewer.rep(0, { mode: 'CA', colorer: 'SS' });
-                    }` : ''}
                     
                     // Start rendering
                     viewer.run();
@@ -822,15 +694,34 @@ ${scriptContent}
             
             ${molecularDataFunctions}
             
-            ${terminalFunctions}
-            
             // Setup event listeners
             function setupEventListeners() {
                 ${representationEventHandler}
                 
                 ${colorerEventHandler}
                 
-                ${terminalToggle}
+                // Input handling
+                if (userInput) {
+                    // Enter key press
+                    userInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            handleUserInput();
+                        }
+                    });
+                    
+                    // Add focus event listener to maintain focus (conditional)
+                    userInput.addEventListener('blur', () => {
+                        // Only restore focus if command is not executing
+                        if (!commandExecuting) {
+                            setTimeout(() => {
+                                if (document.activeElement !== userInput && 
+                                    !document.activeElement.matches('select, button')) {
+                                    userInput.focus();
+                                }
+                            }, 10);
+                        }
+                    });
+                }
                 
                 // Complete resize handling with debouncing
                 let resizeTimeout = null;
@@ -842,24 +733,136 @@ ${scriptContent}
                         if (viewer && viewer._onResize) {
                             viewer._onResize();
                         }
-                        // ターミナルリサイズ処理を追加
-                        if (terminalContainer && terminalContainer.classList.contains('active') && window.fitAddon) {
-                            window.fitAddon.fit();
-                        }
                         resizeTimeout = null;
                     }, 100); // 100ms debounce
                 });
                 
                 resizeObserver.observe(miewContainer);
-                // ターミナルコンテナも監視対象に追加
-                if (terminalContainer) {
-                    resizeObserver.observe(terminalContainer);
+            }
+            
+            // Handle user input
+            function handleUserInput() {
+                if (userInput && userInput.value.trim()) {
+                    const input = userInput.value.trim();
+                    
+                    // Set command executing flag
+                    commandExecuting = true;
+                    
+                    // Check if it's a miew command
+                    if (input.toLowerCase().startsWith('miew ')) {
+                        const miewCommand = input.substring(5); // Remove 'miew ' prefix
+                        
+                        // Send miew command to VS Code for output channel display
+                        sendMessage('command', {
+                            type: 'miew_input',
+                            content: input,
+                            miewCommand: miewCommand
+                        });
+                        
+                        // Execute miew script in WebView
+                        executeMiewScript(miewCommand);
+                    } else {
+                        // Send non-miew commands to VS Code
+                        sendMessage('command', {
+                            type: 'user_input',
+                            content: input
+                        });
+                    }
+                    
+                    // Clear input field
+                    userInput.value = '';
+                    
+                    // Reset command executing flag after delay and restore focus
+                    setTimeout(() => {
+                        commandExecuting = false;
+                        // Restore focus after command execution
+                        if (document.activeElement !== userInput) {
+                            userInput.focus();
+                        }
+                    }, 500);
                 }
             }
             
-
+            // Execute miew script
+            function executeMiewScript(scriptCommand) {
+                if (viewer && typeof viewer.script === 'function') {
+                    try {
+                        viewer.script(scriptCommand, 
+                            (str) => {
+                                // Success callback
+                                const normalizedContent = str
+                                    .replace(/\\r\\n/g, '\\n')
+                                    .replace(/\\r/g, '\\n');
+                                
+                                // Send result to VS Code for output channel display
+                                sendMessage('command', {
+                                    type: 'miew_output',
+                                    content: normalizedContent,
+                                    success: true
+                                });
+                            }, 
+                            (str) => {
+                                // Error callback
+                                const normalizedContent = str
+                                    .replace(/\\r\\n/g, '\\n')
+                                    .replace(/\\r/g, '\\n');
+                                
+                                // Send error to VS Code for output channel display
+                                sendMessage('command', {
+                                    type: 'miew_output',
+                                    content: normalizedContent,
+                                    success: false
+                                });
+                            }
+                        );
+                        
+                    } catch (err) {
+                        const errorMsg = \`Error: \${err.message}\`;
+                        
+                        // Send error to VS Code for output channel display
+                        sendMessage('command', {
+                            type: 'miew_output',
+                            content: errorMsg,
+                            success: false
+                        });
+                    }
+                } else {
+                    const errorMsg = 'Error: Miew viewer not available';
+                    
+                    // Send error to VS Code for output channel display
+                    sendMessage('command', {
+                        type: 'miew_output',
+                        content: errorMsg,
+                        success: false
+                    });
+                }
+            }
             
-            ${terminalMessageHandling}
+            // Initialize VS Code API
+            const vscode = acquireVsCodeApi();
+            
+            // Send message to VS Code
+            function sendMessage(type, payload) {
+                try {
+                    vscode.postMessage({
+                        type: type,
+                        payload: payload,
+                        timestamp: Date.now()
+                    });
+                } catch (error) {
+                    // Fallback: try to use window.vscode if available
+                    if (window.vscode) {
+                        try {
+                            window.vscode.postMessage({
+                                type: type,
+                                payload: payload,
+                                timestamp: Date.now()
+                            });
+                        } catch (fallbackError) {
+                        }
+                    }
+                }
+            }
             
             // Start initialization
             initialize();
@@ -871,7 +874,7 @@ ${scriptContent}
     /**
      * Get common styles for both viewer types
      */
-    private getCommonStyles(hasTerminal: boolean): string {
+    private getCommonStyles(): string {
         const baseStyles = `
         html, body {
             height: 100%;
@@ -888,11 +891,11 @@ ${scriptContent}
             height: 100vh;
         }
         
-        .header {
+        .footer {
             flex-shrink: 0;
-            padding: 10px;
+            padding: 5px 10px;
             background-color: var(--vscode-titleBar-activeBackground);
-            border-bottom: 1px solid var(--vscode-panel-border);
+            border-top: 1px solid var(--vscode-panel-border);
         }
         
         .controls {
@@ -906,6 +909,11 @@ ${scriptContent}
             display: flex;
             align-items: center;
             gap: 5px;
+        }
+        
+        .control-group:first-child {
+            flex: 1;
+            min-width: 0;
         }
         
         .control-group label {
@@ -930,39 +938,7 @@ ${scriptContent}
             background-color: var(--vscode-button-hoverBackground);
         }
         
-        .icon-button {
-            min-width: 60px;
-            height: 26px;
-            padding: 2px 8px;
-            border: 1px solid var(--vscode-input-border);
-            background-color: var(--vscode-input-background);
-            color: var(--vscode-input-foreground);
-            border-radius: 3px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 12px;
-            font-weight: 500;
-        }
-        
-        .icon-button:hover {
-            background-color: var(--vscode-button-hoverBackground);
-            border-color: var(--vscode-focusBorder);
-        }
-        
-        .icon-button:focus {
-            outline: 1px solid var(--vscode-focusBorder);
-            outline-offset: 1px;
-        }
-        
-        .icon-button .codicon {
-            font-size: 16px;
-            color: inherit;
-            vertical-align: middle;
-        }
+
         
         .viewer-container {
             flex: 1;
@@ -991,61 +967,30 @@ ${scriptContent}
             padding: 20px;
             text-align: center;
         }
-        `;
-
-        const terminalStyles = hasTerminal ? `
-        .terminal-container {
-            position: absolute;
-            top: 60px;
-            left: 10px;
-            z-index: 1000;
-            display: none;
-            transition: all 0.3s ease;
-            min-width: 250px;
-            min-height: 250px;
-            max-width: calc(100vw - 30px);
-            max-height: calc(50vh - 80px);
-            width: 50vw;
-            height: calc(50vh - 80px);
-            resize: both;
-            overflow: hidden;
-            border-radius: 10px;
-            background: rgba(0, 0, 0, 0.7) !important;
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                
+        #user-input {
+            flex: 1;
+            min-width: 200px;
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid var(--vscode-input-border);
+            background: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: var(--vscode-editor-font-family);
         }
         
-        .terminal-container.active {
-            display: block;
+        #user-input:focus {
+            outline: 1px solid var(--vscode-focusBorder);
+            border-color: var(--vscode-focusBorder);
         }
+        
+        
 
-        #terminal .xterm {
-            padding: 10px 15px;
-        }
+        `;
 
-        #terminal .xterm-viewport {
-            scrollbar-width: none;
-            background: transparent !important;
-        }
-
-        #terminal canvas {
-            background: transparent !important;
-        }
-
-        .terminal-container::-webkit-resizer {
-            background-color: rgba(255, 255, 255, 0.15);
-            border-radius: 10px;
-            cursor: nwse-resize;
-        }
-
-        .terminal-container:active {
-            transition: none;
-        }
-        ` : '';
-
-        return baseStyles + terminalStyles;
+        return baseStyles;
     }
 
     
@@ -1060,7 +1005,6 @@ ${scriptContent}
     private async getWebviewContent(webview: vscode.Webview, molecularData: MolecularData): Promise<string> {
         return this.getUnifiedViewerContent({
             webview,
-            hasTerminal: true,
             dataSource: 'molecular',
             data: molecularData
         });
@@ -1086,7 +1030,6 @@ ${scriptContent}
 
         return this.getUnifiedViewerContent({
             webview,
-            hasTerminal: false,
             dataSource: 'direct',
             data: escapedContent,
             filePath
@@ -1111,7 +1054,15 @@ ${scriptContent}
     dispose(): void {
         if (this.currentPanel) {
             this.currentPanel.dispose();
-            this.currentPanel = undefined;
+        }
+        if (this.textChannel) {
+            this.textChannel.dispose();
+        }
+        if (this.jsonChannel) {
+            this.jsonChannel.dispose();
+        }
+        if (this.logChannel) {
+            this.logChannel.dispose();
         }
     }
 } 
