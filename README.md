@@ -1,174 +1,185 @@
 # CCView - Computational Chemistry File Viewer
 
-CCView is a VS Code extension that provides comprehensive computational chemistry output file viewing capabilities. It combines the robust parsing power of cclib with the advanced 3D molecular visualization of miew, offering an integrated terminal interface for computational chemistry workflows.
+Advanced 3D molecular visualization and analysis for VS Code. View computational chemistry output files in 3D, analyze molecular data with integrated terminal commands, and export results in multiple formats.
 
 ![](https://i.gyazo.com/04d87b2b1802baf32b5af7e5a6ac228f.png)
 
-## ✨ Features
+## Overview
 
-### 🔬 **Advanced Molecular Visualization**
-- **3D Molecular Structure Viewing**: Interactive 3D visualization using miew viewer
-- **Multiple Representation Modes**: 
-  - Ball & Stick, Licorice, Tube, Lines, Van der Waals
-  - Cartoon representation for PDB files with secondary structure coloring
-- **Dynamic Coloring Options**: Element-based, Chain-based, Secondary structure, Uniform
-- **Interactive Controls**: Rotate, zoom, pan, and select atoms
-- **Real-time Updates**: Dynamic representation and color scheme changes
+CCView combines **cclib** (computational chemistry parsing) and **miew** (3D molecular visualization) to provide:
 
-### 📊 **Comprehensive Data Parsing**
-- **cclib Integration**: Robust parsing of quantum chemistry data
-- **Molecular Information**: Atomic coordinates, masses, charges, multiplicity
-- **Energy Data**: SCF energies, MP2 energies, coupled-cluster energies, ZPVE
-- **Vibrational Analysis**: Frequencies, IR intensities, Raman activities, displacements
-- **Molecular Orbitals**: Orbital energies, coefficients, HOMO/LUMO information
-- **Properties**: Multipole moments, polarizabilities, atomic charges, spin densities
+- **Interactive 3D Molecular Visualization** - Rotate, zoom, and explore molecular structures
+- **Comprehensive Data Analysis** - Extract energies, frequencies, orbitals, and more
+- **Integrated Terminal Interface** - Use ccget/ccwrite commands directly in VS Code
+- **Smart File Detection** - Automatically recognizes 17+ computational chemistry formats
+- **Multiple Representation Modes** - Ball & stick, licorice, cartoon, and more
 
-### 💻 **Integrated Terminal Interface**
-- **xterm.js Terminal**: Full-featured terminal emulator within VS Code
-- **ccget Commands**: Extract molecular data using cclib's ccget functionality
-- **ccwrite Commands**: Export data in multiple formats (JSON, XYZ, CML, MOLDEN, WFX)
-- **miew Scripting**: Direct control of molecular visualization through miew commands
-- **Command History**: Navigate through command history with arrow keys
-- **Real-time Output**: Live display of command results and errors
+## Installation
 
-### 🔍 **Smart File Detection**
-- **Automatic Format Recognition**: Detects quantum chemistry file formats
-- **Direct File Support**: Native support for PDB, CIF, XYZ files
-- **cclib Processing**: Advanced parsing for quantum chemistry output files
-
-## 🧪 Supported File Formats
-
-### Quantum Chemistry Output Files
-- **Gaussian** (.log, .out) - Most widely used
-- **GAMESS** (.log, .out) - American version
-- **GAMESS-UK** (.log, .out) - British version
-- **NWChem** (.out) - Open source
-- **ORCA** (.out) - Free version available
-- **Q-Chem** (.out) - Commercial
-- **Psi4** (.out) - Open source
-- **Turbomole** (.out) - Commercial
-- **Molpro** (.out) - Commercial
-- **Molcas** (.out) - Commercial
-- **ADF** (.out) - Amsterdam Density Functional
-- **CFOUR** (.out) - Coupled-Cluster
-- **DALTON** (.out) - Open source
-- **Jaguar** (.out) - Commercial
-- **MOPAC** (.out) - Semi-empirical
-- **XTB** (.out) - Fast calculation
-
-### Direct Structure Files
-- **PDB** (.pdb) - Protein Data Bank format
-- **CIF** (.cif) - Crystallographic Information Framework
-- **XYZ** (.xyz) - Cartesian coordinates format
-
-## 🚀 Quick Start
-
-### Installation
-
-1. **Install the Extension**
-   - Install from VS Code Marketplace
-   - Or clone and install locally:
-   ```bash
-   git clone https://github.com/yamnor/ccview.git
-   cd ccview
-   npm install
-   npm run compile
-   ```
-
-2. **Install Python Dependencies**
+1. Install CCView from the VS Code Marketplace
+2. Install Python dependencies:
    ```bash
    pip install cclib numpy scipy
    ```
+3. Ensure VS Code Python extension is installed and configured
+4. **Internet connection required** - CCView downloads visualization libraries (miew, xterm.js) from CDN when first launched
 
-3. **Verify Python Environment**
-   - Ensure VS Code Python extension is installed
-   - Select appropriate Python interpreter in VS Code
+## Quick Start
 
-### Usage
+1. Open any supported file (.log, .out, .pdb, .cif, .xyz)
+2. Right-click in the explorer and select "Open with CCView"
+3. Explore the 3D viewer and terminal interface
 
-1. **Open a File**
-   - Open any supported quantum chemistry file (.log, .out, .pdb, .cif, .xyz)
-   - Right-click in the explorer and select "Open with CCView"
-   - Or use Command Palette: `CCView: Open CCView`
+## Supported File Formats
 
-2. **Explore the Interface**
-   - **3D Viewer**: Interactive molecular visualization
-   - **Controls**: Change representation modes and colors
-   - **Terminal**: Access advanced commands (click Terminal button)
+### Computational Chemistry Output Files
+| Software | Extensions | Description |
+|----------|------------|-------------|
+| **Gaussian** | `.log`, `.out` | Most widely used |
+| **GAMESS** | `.log`, `.out` | American version |
+| **ORCA** | `.out` | Free version available |
+| **NWChem** | `.out` | Open source |
+| **Psi4** | `.out` | Open source |
+| **Q-Chem** | `.out` | Commercial |
+| **Turbomole** | `.out` | Commercial |
+| **Molpro** | `.out` | Commercial |
+| **ADF** | `.out` | Amsterdam Density Functional |
+| **CFOUR** | `.out` | Coupled-Cluster |
+| **DALTON** | `.out` | Open source |
+| **MOPAC** | `.out` | Semi-empirical |
+| **XTB** | `.out` | Fast calculation |
 
-3. **Use Terminal Commands**
-   ```bash
-   # Get molecular coordinates
-   ccget coords
-   
-   # Get SCF energies
-   ccget scfenergies
-   
-   # Get vibrational frequencies
-   ccget vibfreqs
-   
-   # Export to XYZ format
-   ccwrite xyz molecule.out
-   
-   # Change molecular representation
-   miew tube
-   miew ballstick
-   miew color element
-   ```
+### Direct Structure Files
+| Format | Extension | Description |
+|--------|-----------|-------------|
+| **PDB** | `.pdb` | Protein Data Bank format |
+| **CIF** | `.cif` | Crystallographic Information Framework |
+| **XYZ** | `.xyz` | Cartesian coordinates format |
 
-## 🛠️ Advanced Features
+## Features
 
-### Terminal Commands
+### Molecular Visualization
 
-#### ccget Commands
-- `ccget --list` - List available properties
-- `ccget coords` - Get atomic coordinates
-- `ccget scfenergies` - Get SCF energies
-- `ccget vibfreqs` - Get vibrational frequencies
-- `ccget moenergies` - Get molecular orbital energies
-- `ccget atomcharges` - Get atomic charges
-- `ccget moments` - Get multipole moments
-
-#### ccwrite Commands
-- `ccwrite json molecule.out` - Export as JSON
-- `ccwrite xyz molecule.out` - Export as XYZ
-- `ccwrite cml molecule.out` - Export as CML
-- `ccwrite molden molecule.out` - Export as MOLDEN
-- `ccwrite wfx molecule.out` - Export as WFX
-
-#### miew Commands
-- `miew tube` - Switch to tube representation
-- `miew licorice` - Switch to licorice representation
-- `miew ballstick` - Switch to ball & stick representation
-- `miew color element` - Color by element
-- `miew color chain` - Color by chain
-- `miew color secondary` - Color by secondary structure
-
-### Representation Modes
-
-#### For Quantum Chemistry Files
+**Representation Modes:**
 - **Ball & Stick** (default) - Atoms as spheres, bonds as cylinders
 - **Licorice** - Atoms and bonds as cylinders
 - **Van der Waals** - Atoms as spheres with VDW radii
 - **Lines** - Simple line representation
-
-#### For PDB Files (Additional)
-- **Cartoon** (default) - Protein backbone representation
+- **Cartoon** (PDB only) - Protein backbone representation
 - **Tube** - Smooth tube representation
-- **Secondary Structure** - Helix, sheet, coil coloring
 
-### Color Schemes
+**Coloring Options:**
 - **Element** - Color by chemical element
 - **Chain** - Color by protein chain
 - **Secondary Structure** - Color by protein secondary structure
 - **Residue** - Color by amino acid residue
 - **Uniform** - Single color
 
-## 🔧 Development
+### Data Analysis
+
+CCView extracts and displays:
+- **Molecular Information**: Atomic coordinates, masses, charges, multiplicity
+- **Energy Data**: SCF energies, MP2 energies, coupled-cluster energies, ZPVE
+- **Vibrational Analysis**: Frequencies, IR intensities, Raman activities, displacements
+- **Molecular Orbitals**: Orbital energies, coefficients, HOMO/LUMO information
+- **Properties**: Multipole moments, polarizabilities, atomic charges, spin densities
+
+### Terminal Interface
+
+**ccget Commands** - Extract computational chemistry data:
+```bash
+ccget coords          # Get atomic coordinates
+ccget scfenergies     # Get SCF energies
+ccget vibfreqs        # Get vibrational frequencies
+ccget moenergies      # Get molecular orbital energies
+ccget atomcharges     # Get atomic charges
+ccget moments         # Get multipole moments
+```
+
+**ccwrite Commands** - Export in multiple formats:
+```bash
+ccwrite json molecule.out    # Export as JSON
+ccwrite xyz molecule.out     # Export as XYZ
+ccwrite cml molecule.out     # Export as CML
+ccwrite molden molecule.out  # Export as MOLDEN
+ccwrite wfx molecule.out     # Export as WFX
+```
+
+**miew Commands** - Control visualization:
+```bash
+miew tube                    # Switch to tube representation
+miew licorice               # Switch to licorice representation
+miew ballstick              # Switch to ball & stick representation
+miew color element          # Color by element
+miew color chain            # Color by chain
+miew color secondary        # Color by secondary structure
+```
+
+## Use Cases
+
+### For Computational Chemists
+- Visualize calculation results in 3D immediately after computation
+- Extract specific data using ccget commands
+- Export results in various formats for further analysis
+- Compare structures from different calculations
+
+### For Structural Biologists
+- View protein structures with cartoon representation
+- Analyze secondary structure with color coding
+- Export coordinates in standard formats
+- Interactive exploration of molecular structures
+
+### For Chemistry Educators
+- Demonstrate molecular concepts with 3D visualization
+- Show different representations (ball & stick, licorice, etc.)
+- Interactive learning through terminal commands
+- Export structures for presentations
+
+## Advanced Usage
+
+### Terminal Commands Reference
+
+#### ccget Properties
+| Property | Description |
+|----------|-------------|
+| `atomnos` | Atomic numbers |
+| `atomcoords` | Atomic coordinates |
+| `scfenergies` | SCF energies |
+| `vibfreqs` | Vibrational frequencies |
+| `moenergies` | Molecular orbital energies |
+| `atomcharges` | Atomic charges |
+| `moments` | Multipole moments |
+| `polarizabilities` | Polarizabilities |
+
+#### ccwrite Formats
+| Format | Description | Options |
+|--------|-------------|---------|
+| `json` | JSON format | `--terse`, `--index` |
+| `cjson` | Compressed JSON | `--terse` |
+| `cml` | Chemical Markup Language | `--terse` |
+| `xyz` | Cartesian coordinates | `--index` |
+| `molden` | MOLDEN format | `--naturalorbitals` |
+| `wfx` | WFX format | `--naturalorbitals` |
+
+## Troubleshooting
+
+### Common Issues
+
+| Problem | Solution |
+|---------|----------|
+| **Python Environment Not Found** | Install VS Code Python extension, select interpreter |
+| **cclib Not Installed** | Run `pip install cclib` |
+| **File Not Recognized** | Check file extension and content validity |
+| **Terminal Not Responding** | Click Terminal button, press Enter to refresh |
+| **3D Viewer Not Loading** | Check internet connection (required for CDN libraries), verify file contains valid data |
+
+---
+
+## Development
 
 ### Project Structure
 ```
-ccview-extension/
+ccview/
 ├── src/                    # TypeScript source files
 │   ├── extension.ts       # Main extension entry point
 │   ├── fileDetector.ts    # File format detection
@@ -178,98 +189,55 @@ ccview-extension/
 │   └── terminalManager.ts # Terminal interface management
 ├── python/                # Python backend
 │   └── parser.py         # cclib integration
-├── out/                   # Compiled JavaScript files
 └── package.json          # Extension manifest
 ```
 
 ### Building from Source
-```bash
-# Install dependencies
-npm install
 
-# Compile TypeScript
-npm run compile
-
-# Watch for changes
-npm run watch
-
-# Run tests
-npm test
-```
-
-### Debugging
-1. Press F5 in VS Code to launch extension in debug mode
-2. Open a quantum chemistry file
-3. Test functionality in the new VS Code window
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **Python Environment Not Found**
-   - Install VS Code Python extension
-   - Select Python interpreter: `Ctrl+Shift+P` → "Python: Select Interpreter"
-
-2. **cclib Not Installed**
+1. Clone the repository:
    ```bash
-   pip install cclib
+   git clone https://github.com/yamnor/ccview.git
+   cd ccview
    ```
 
-3. **File Not Recognized**
-   - Check file extension (.log, .out, .pdb, .cif, .xyz)
-   - Verify file content is valid
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-4. **Terminal Not Responding**
-   - Click the Terminal button to activate
-   - Try pressing Enter to refresh the prompt
+3. Compile TypeScript:
+   ```bash
+   npm run compile
+   ```
 
-5. **3D Viewer Not Loading**
-   - Check internet connection (CDN libraries)
-   - Verify file contains valid molecular data
+4. Watch for changes:
+   ```bash
+   npm run watch
+   ```
 
-### Debug Information
-- Check VS Code Output panel for error messages
-- Use Developer Tools (F12) in WebView for detailed errors
-- Review console logs for debugging information
+### Debugging
 
-## 📈 Performance
+1. Press F5 in VS Code to launch extension in debug mode
+2. Open a computational chemistry file
+3. Test functionality in the new VS Code window
 
-- **Large Molecules**: Optimized for molecules with 1000+ atoms
-- **Memory Management**: Efficient memory usage for large files
-- **Rendering**: Hardware-accelerated 3D rendering
-- **Parsing**: Fast cclib-based parsing with caching
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/new-feature`
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-### Development Guidelines
-- Follow TypeScript best practices
-- Use English for all code comments and UI text
-- Maintain consistent code style
-- Add appropriate error handling
-
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-- **[cclib](https://cclib.github.io/)** - Quantum chemistry file parsing library
+- **[cclib](https://cclib.github.io/)** - Computational chemistry file parsing library
 - **[miew](https://miew.opensource.epam.com/)** - 3D molecular visualization library
 - **[xterm.js](https://xtermjs.org/)** - Terminal emulator for the web
 - **[VS Code Extension API](https://code.visualstudio.com/api)** - Extension development framework
 
-## 📞 Support
+## Support
 
-- **Issues**: Report bugs and request features on GitHub
-- **Documentation**: Check the [Wiki](https://github.com/your-repo/ccview-extension/wiki)
-- **Community**: Join discussions in GitHub Discussions
+- **Issues**: Report bugs and request features on [GitHub](https://github.com/yamnor/ccview/issues)
+- **Documentation**: Check the [Wiki](https://github.com/yamnor/ccview/wiki)
+- **Community**: Join discussions in [GitHub Discussions](https://github.com/yamnor/ccview/discussions)
 
 ---
 
-**CCView** - Making computational chemistry accessible and interactive in VS Code! 🧪⚛️ 
+**CCView** - Making computational chemistry accessible and interactive in VS Code 
