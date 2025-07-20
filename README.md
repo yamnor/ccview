@@ -87,8 +87,9 @@ You can also configure CCView to work with files using `.log`, `.out`, `.txt`, o
 1. Install CCView from the VS Code Marketplace
 2. Install required Python packages:
    ```bash
-   pip install cclib
+   pip install cclib==1.8.1
    ```
+   **Note**: CCView is currently tested with cclib 1.8.1. While cclib 2.0 is in development, it may have compatibility issues. Please use the stable 1.8.1 version for now.
 3. Ensure VS Code can find your Python interpreter
 
 ## Quick Start
@@ -178,7 +179,7 @@ You can customize which file types CCView recognizes by editing VS Code settings
 | Problem | Solution |
 |---------|----------|
 | **Python not found** | Install VS Code Python extension and select interpreter |
-| **cclib not installed** | Run `pip install cclib` in your system terminal |
+| **cclib not installed** | Run `pip install cclib==1.8.1` in your system terminal |
 | **File not recognized** | Check file extension and ensure file contains valid data |
 | **3D viewer not loading** | Verify file contains valid molecular data |
 
