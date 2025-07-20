@@ -99,7 +99,7 @@ export class TerminalManager {
                     outputs.push(this.getHelpOutput());
                     break;
                 case 'clear':
-                    outputs.push({ type: 'stdout', content: '', timestamp });
+                    outputs.push({ type: 'stdout', content: 'clear', timestamp });
                     break;
                 default:
                     outputs.push({
@@ -357,8 +357,6 @@ export class TerminalManager {
         this.commandHistory = [];
         this.historyIndex = 0;
     }
-
-
 
     /**
      * Resolve output path to ensure it's writable

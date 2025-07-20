@@ -324,7 +324,7 @@ class QuantumChemistryParser:
                 return {
                     'success': True,
                     'property': property_name,
-                    'value': self._convert_complex_to_json(value),  # Convert to JSON-serializable format
+                    'value': self._convert_complex_to_json(value),
                     'formatted_output': formatted_output
                 }
             else:
@@ -358,14 +358,6 @@ class QuantumChemistryParser:
             else:
                 # Return content as string
                 result = ccwrite(data, output_format, None)
-                
-                # Return content as is - no special formatting
-                return {
-                    'success': True,
-                    'format': output_format,
-                    'content': result,
-                    'message': f'Successfully converted to {output_format} format'
-                }
                 
                 return {
                     'success': True,
@@ -414,7 +406,6 @@ def main():
     elif command == 'detect' and len(sys.argv) >= 3:
         file_path = sys.argv[2]
         try:
-            # Use cclib to detect format
             data = ccread(file_path)
             format_type = parser._get_format_from_cclib_data(data)
             print(json.dumps({

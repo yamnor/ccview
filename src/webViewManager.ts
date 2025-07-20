@@ -143,7 +143,6 @@ export class WebViewManager {
     async sendMessage(message: WebViewMessage): Promise<void> {
         if (this.currentPanel) {
             this.currentPanel.webview.postMessage(message);
-        } else {
         }
     }
 
@@ -151,7 +150,6 @@ export class WebViewManager {
      * Handle messages from WebView
      */
     private handleWebViewMessage(message: WebViewMessage): void {
-        
         switch (message.type) {
             case 'command':
                 this.handleCommand(message.payload);
@@ -170,7 +168,6 @@ export class WebViewManager {
      * Handle commands from WebView
      */
     private async handleCommand(command: any): Promise<void> {
-        
         if (command.type === 'miew_input') {
             // Handle miew command through TerminalManager for history tracking
             if (this.terminalManager) {
@@ -236,6 +233,13 @@ export class WebViewManager {
             
         } else if (command.type === 'user_input' && this.terminalManager) {
             try {
+                // Handle clear command specially
+                if (command.content.trim() === 'clear') {
+                    this.textChannel.clear();
+                    this.logChannel.clear();
+                    return;
+                }
+                
                 // Log command execution
                 this.logChannel.info(`Command executed: ${command.content}`);
                 
@@ -352,11 +356,11 @@ export class WebViewManager {
      */
     private formatOutput(output: TerminalOutput, command: string): string {
         // Handle clear command specially
-        if (command === 'clear') {
+        if (command === 'clear' || output.content === 'clear') {
             // Clear all output channels
             this.textChannel.clear();
             this.logChannel.clear();
-            return 'Terminal cleared';
+            return 'Output and log channels cleared';
         }
         
         // ccget command formatting
