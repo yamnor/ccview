@@ -1,8 +1,8 @@
 # CCView - Comp Chem Viewer
 
-A VS Code extension for viewing and analyzing computational chemistry output files. CCView reads computational chemistry calculation results, parses them using the cclib library, and displays molecular structures in 3D using the miew molecular viewer - all within VS Code.
+A VS Code extension for viewing and analyzing computational chemistry output files. CCView reads computational chemistry calculation results, parses them using the [cclib](https://cclib.github.io/) library, and displays molecular structures in 3D using the [miew](https://lifescience.opensource.epam.com/miew/) molecular viewer - all within VS Code.
 
-![](https://i.gyazo.com/04d87b2b1802baf32b5af7e5a6ac228f.png)
+![](https://i.gyazo.com/af1461448bb11bb4e80d6f79b6a91129.png)
 
 ## What CCView Does
 
@@ -11,7 +11,7 @@ CCView helps you work with computational chemistry files by:
 1. **Reading calculation output files** from computational chemistry software (Gaussian, ORCA, NWChem, etc.)
 2. **Extracting molecular data** using [cclib](https://cclib.github.io/) - a library specifically designed for parsing computational chemistry files
 3. **Displaying 3D molecular structures** using [miew](https://lifescience.opensource.epam.com/miew/) - a web-based molecular viewer
-4. **Providing analysis tools** through an integrated terminal interface
+4. **Providing analysis tools** through an interactive command interface
 
 The main advantage is that you can view your calculation results immediately after they complete, without leaving VS Code. Instead of opening separate programs, you can right-click on your output file and see the molecular structure directly in the editor.
 
@@ -27,18 +27,18 @@ The main advantage is that you can view your calculation results immediately aft
 - Export molecular structures in various formats (XYZ, CML, JSON)
 - View calculation properties through simple commands
 
-### Integrated Terminal Interface
-- Built-in terminal for running analysis commands
-- Command history and navigation
+### Interactive Command Interface
+- Built-in command interface for running analysis commands
+- Command history and suggestions
 - Direct access to cclib's ccget and ccwrite functionality
 
 ## How It Works
 
 ### For Computational Chemistry Output Files
-1. CCView uses cclib to read and parse your calculation output file
+1. CCView uses [cclib](https://cclib.github.io/) to read and parse your calculation output file
 2. Extracts molecular coordinates, energies, frequencies, and other data
-3. Displays the molecular structure in 3D using miew
-4. Provides access to the parsed data through terminal commands
+3. Displays the molecular structure in 3D using [miew](https://lifescience.opensource.epam.com/miew/)
+4. Provides access to the parsed data through analysis commands
 
 ### For Direct Structure Files
 1. Loads PDB, CIF, or XYZ files directly into the 3D viewer
@@ -96,11 +96,11 @@ You can also configure CCView to work with files using `.log`, `.out`, `.txt`, o
 1. **Open a supported file** in VS Code (any computational chemistry output file or structure file)
 2. **Right-click in the file explorer** and select "Open CCView"
 3. **View the 3D structure** in the molecular viewer
-4. **Use the terminal** to analyze data (type `help` to see available commands)
+4. **Use the command interface** to analyze data (type `help` to see available commands)
 
-## Using the Terminal Interface
+## Using the Command Interface
 
-CCView includes a terminal where you can run analysis commands. The terminal supports:
+CCView includes a command interface where you can run analysis commands. The command interface supports:
 
 ### ccget Commands - Extract Data
 ```bash
@@ -168,7 +168,7 @@ You can customize which file types CCView recognizes by editing VS Code settings
 ### For Chemistry Educators
 - **Molecular visualization** for teaching concepts
 - **Different representation modes** (ball & stick, licorice, etc.)
-- **Interactive learning** through terminal commands
+- **Interactive learning** through analysis commands
 - **Structure export** for presentations
 
 ## Troubleshooting
@@ -178,12 +178,12 @@ You can customize which file types CCView recognizes by editing VS Code settings
 | Problem | Solution |
 |---------|----------|
 | **Python not found** | Install VS Code Python extension and select interpreter |
-| **cclib not installed** | Run `pip install cclib` in your terminal |
+| **cclib not installed** | Run `pip install cclib` in your system terminal |
 | **File not recognized** | Check file extension and ensure file contains valid data |
 | **3D viewer not loading** | Verify file contains valid molecular data |
 
 ### Getting Help
-- Check the terminal output for error messages
+- Check the command interface output for error messages
 - Ensure your Python environment has the required packages
 - Verify file format is supported
 - Check VS Code's Developer Console for additional error information
