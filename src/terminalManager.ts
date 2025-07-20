@@ -21,7 +21,7 @@ export interface TerminalOutput {
 }
 
 /**
- * Terminal manager for handling xterm.js integration and command processing
+ * Terminal manager for handling command processing
  */
 export class TerminalManager {
     private parserInterface: ParserInterface;
@@ -99,7 +99,7 @@ export class TerminalManager {
                     outputs.push(this.getHelpOutput());
                     break;
                 case 'clear':
-                    outputs.push({ type: 'stdout', content: '\x1b[2J\x1b[H', timestamp });
+                    outputs.push({ type: 'stdout', content: '', timestamp });
                     break;
                 default:
                     outputs.push({
@@ -157,16 +157,8 @@ export class TerminalManager {
             const result = await this.parserInterface.executeCcget(filePath, propertyName);
             
             if (result.success) {
-                // Format the output nicely
-                let formattedOutput = `${propertyName}:`;
-                
-                if (typeof result.output === 'object') {
-                    // For complex objects, format as JSON with indentation
-                    formattedOutput += JSON.stringify(result.output, null, 2);
-                } else {
-                    // For simple values, just show the value
-                    formattedOutput += result.output;
-                }
+                // Use Python-formatted output
+                const formattedOutput = result.formatted_output || `${propertyName}: ${JSON.stringify(result.output, null, 2)}`;
                 
                 outputs.push({
                     type: 'stdout',
@@ -254,7 +246,7 @@ export class TerminalManager {
                         timestamp
                     });
                 } else {
-                    // Content display
+                    // Content display - Python side returns content in result.output
                     const content = result.output || 'No content available';
                     outputs.push({
                         type: 'stdout',
@@ -298,18 +290,11 @@ export class TerminalManager {
 
         const scriptCommand = args.join(' ');
         
-        // This will be handled by the WebView's miew viewer
+        // Miew script execution is handled by the WebView
+        // The command is sent to WebView for execution, and results are displayed there
         outputs.push({
             type: 'stdout',
-            content: `Executing miew script: ${scriptCommand}`,
-            timestamp
-        });
-
-        // Send command to WebView for execution
-        // This will be implemented in the WebView integration
-        outputs.push({
-            type: 'stdout',
-            content: 'Miew script execution will be handled by the viewer',
+            content: `${scriptCommand}`,
             timestamp
         });
 
@@ -320,25 +305,20 @@ export class TerminalManager {
      * Get help output
      */
     private getHelpOutput(): TerminalOutput {
-        const helpText = 'CCView Terminal Commands:\n\n' +
-            '  ccget <property_name> [file_path]    - Extract property from quantum chemistry file\n' +
-            '  ccwrite <format> [output_path]       - Convert current file to specified format\n' +
-            '  ccwrite <format> <file_path> <output> - Convert file to specified format\n' +
-            '  miew <script_command>                - Execute miew viewer script\n' +
-            '  help                                 - Show this help message\n' +
-            '  clear                                - Clear terminal screen\n\n' +
-            'Common ccget properties:\n' +
-            '  - atomnos, atomcoords, scfenergies, vibfreqs, atomcharges\n' +
-            '  - moenergies, moments, polarizabilities\n\n' +
-            'Supported ccwrite formats:\n' +
-            '  - json, cjson, cml, xyz, molden, wfx\n\n' +
+        const helpText = 'CCView Commands:\n\n' +
+            '  ccget <property>              - Extract property from comp chem file\n' +
+            '  ccwrite <format> [filename]   - Convert current file to specified format\n' +
+            '  miew <command>                - Execute miew viewer command\n' +
+            '  help                          - Show this help message\n' +
+            '  clear                         - Clear terminal screen\n\n' +
             'Examples:\n' +
-            '  ccget atomnos\n' +
+            '  ccget atomcharges\n' +
             '  ccget scfenergies\n' +
             '  ccwrite xyz\n' +
             '  ccwrite xyz output.xyz\n' +
-            '  ccwrite xyz input.log output.xyz\n' +
-            '  miew rep 0 mode BS';
+            '  miew rep 0 m=LC\n' +
+            '  miew set autoRotation 0.5\n' +
+            '  miew screenshot';
 
         return {
             type: 'stdout',
@@ -377,6 +357,8 @@ export class TerminalManager {
         this.commandHistory = [];
         this.historyIndex = 0;
     }
+
+
 
     /**
      * Resolve output path to ensure it's writable

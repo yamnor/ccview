@@ -32,22 +32,6 @@ module.exports = {
         {
           from: 'node_modules/lodash/lodash.js',
           to: 'lodash.js'
-        },
-        {
-          from: 'node_modules/xterm/lib/xterm.js',
-          to: 'xterm.js'
-        },
-        {
-          from: 'node_modules/xterm/css/xterm.css',
-          to: 'xterm.css'
-        },
-        {
-          from: 'node_modules/xterm-addon-fit/lib/xterm-addon-fit.js',
-          to: 'xterm-addon-fit.js'
-        },
-        {
-          from: 'node_modules/xterm-addon-web-links/lib/xterm-addon-web-links.js',
-          to: 'xterm-addon-web-links.js'
         }
       ]
     })

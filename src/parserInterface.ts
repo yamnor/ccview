@@ -58,6 +58,7 @@ export interface CommandResult {
     output: string;
     error?: string;
     executionTime: number;
+    formatted_output?: string;
 }
 
 /**
@@ -117,6 +118,7 @@ export class ParserInterface {
                         return {
                             success: true,
                             output: parsedResult.value,
+                            formatted_output: parsedResult.formatted_output,
                             error: undefined,
                             executionTime: result.executionTime
                         };

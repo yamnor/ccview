@@ -219,6 +219,80 @@ class QuantumChemistryParser:
         else:
             return [obj] if obj is not None else []
     
+    def _format_property_output(self, property_name: str, data: Any) -> str:
+        """Format property output for display"""
+        if isinstance(data, dict):
+            return self._format_dict_output(property_name, data)
+        elif isinstance(data, (list, tuple)) or (NUMPY_AVAILABLE and isinstance(data, np.ndarray)):
+            return self._format_array_output(property_name, data)
+        else:
+            return self._format_simple_output(property_name, data)
+
+    def _format_dict_output(self, property_name: str, data: dict) -> str:
+        """Format dictionary output (e.g., atomcharges)"""
+        result = f"{property_name}:\n"
+        
+        for key, value in data.items():
+            if isinstance(value, (list, tuple)) or (NUMPY_AVAILABLE and isinstance(value, np.ndarray)):
+                # Convert to list for processing
+                if NUMPY_AVAILABLE and isinstance(value, np.ndarray):
+                    value = value.tolist()
+                
+                result += f"  {key}: [{len(value)} items]\n"
+                if len(value) <= 10:
+                    formatted_values = [self._format_value(v) for v in value]
+                    result += f"    {', '.join(formatted_values)}\n"
+                else:
+                    first_5 = [self._format_value(v) for v in value[:5]]
+                    last_5 = [self._format_value(v) for v in value[-5:]]
+                    result += f"    First 5: {', '.join(first_5)}\n"
+                    result += f"    Last 5: {', '.join(last_5)}\n"
+            elif isinstance(value, dict):
+                result += f"  {key}: {json.dumps(value, indent=4)}\n"
+            else:
+                result += f"  {key}: {self._format_value(value)}\n"
+        
+        return result
+
+    def _format_array_output(self, property_name: str, data) -> str:
+        """Format array output"""
+        result = f"{property_name}:\n"
+        
+        # Convert numpy array to list
+        if NUMPY_AVAILABLE and isinstance(data, np.ndarray):
+            data = data.tolist()
+        
+        if len(data) == 0:
+            return result + "  (empty array)\n"
+        
+        # Check if it's a simple array of numbers
+        if all(isinstance(item, (int, float)) or (NUMPY_AVAILABLE and isinstance(item, np.number)) for item in data):
+            formatted_values = [self._format_value(item) for item in data]
+            result += f"  [{', '.join(formatted_values)}]\n"
+            return result
+        
+        # Check if it's a 2D array
+        if all(isinstance(item, (list, tuple)) or (NUMPY_AVAILABLE and isinstance(item, np.ndarray)) for item in data):
+            for i, row in enumerate(data):
+                if NUMPY_AVAILABLE and isinstance(row, np.ndarray):
+                    row = row.tolist()
+                formatted_values = [self._format_value(item) for item in row]
+                result += f"  [{i}]: [{', '.join(formatted_values)}]\n"
+            return result
+        
+        # Default formatting for complex arrays
+        return f"{property_name}:\n{json.dumps(data, indent=2)}"
+
+    def _format_simple_output(self, property_name: str, data: Any) -> str:
+        """Format simple value output"""
+        return f"{property_name}: {self._format_value(data)}\n"
+
+    def _format_value(self, value: Any) -> str:
+        """Format individual value"""
+        if isinstance(value, (int, float)) or (NUMPY_AVAILABLE and isinstance(value, np.number)):
+            return f"{float(value):.6f}"
+        return str(value)
+
     def _convert_complex_to_json(self, obj) -> Any:
         """Convert complex objects (including nested numpy arrays) to JSON-serializable format"""
         if obj is None:
@@ -240,17 +314,18 @@ class QuantumChemistryParser:
             return str(obj)
     
     def execute_ccget(self, file_path: str, property_name: str) -> Dict[str, Any]:
-        """Execute ccget command equivalent"""
+        """Execute ccget command equivalent with formatted output"""
         try:
             data = ccread(file_path)
             
             if hasattr(data, property_name):
                 value = getattr(data, property_name)
-                converted_value = self._convert_complex_to_json(value)
+                formatted_output = self._format_property_output(property_name, value)
                 return {
                     'success': True,
                     'property': property_name,
-                    'value': converted_value
+                    'value': self._convert_complex_to_json(value),  # Convert to JSON-serializable format
+                    'formatted_output': formatted_output
                 }
             else:
                 return {
@@ -283,6 +358,15 @@ class QuantumChemistryParser:
             else:
                 # Return content as string
                 result = ccwrite(data, output_format, None)
+                
+                # Return content as is - no special formatting
+                return {
+                    'success': True,
+                    'format': output_format,
+                    'content': result,
+                    'message': f'Successfully converted to {output_format} format'
+                }
+                
                 return {
                     'success': True,
                     'format': output_format,

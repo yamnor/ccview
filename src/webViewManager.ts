@@ -8,7 +8,7 @@ import { TerminalManager, TerminalCommand, TerminalOutput } from './terminalMana
  * WebView message types
  */
 export interface WebViewMessage {
-    type: 'data' | 'command' | 'error' | 'status' | 'terminal_output';
+    type: 'data' | 'command' | 'error' | 'status' | 'terminal_output' | 'history_result';
     payload: any;
     timestamp: number;
 }
@@ -28,7 +28,6 @@ export class WebViewManager {
     
     // Output channels for structured data
     private textChannel: vscode.OutputChannel;
-    private jsonChannel: vscode.OutputChannel;
     private logChannel: vscode.LogOutputChannel;
 
     constructor(extensionUri: vscode.Uri) {
@@ -36,7 +35,6 @@ export class WebViewManager {
         
         // Initialize output channels
         this.textChannel = vscode.window.createOutputChannel('CCView');
-        this.jsonChannel = vscode.window.createOutputChannel('CCView JSON', 'json');
         this.logChannel = vscode.window.createOutputChannel('CCView Log', { log: true });
     }
 
@@ -174,13 +172,55 @@ export class WebViewManager {
     private async handleCommand(command: any): Promise<void> {
         
         if (command.type === 'miew_input') {
-            // Handle miew command output
-            this.logChannel.info(`Miew command executed: ${command.content}`);
-            this.textChannel.appendLine(`> ${command.content}`);
-            this.textChannel.show();
+            // Handle miew command through TerminalManager for history tracking
+            if (this.terminalManager) {
+                try {
+                    // Log command execution
+                    this.logChannel.info(`Miew command executed: ${command.content}`);
+                    
+                    // Parse and execute through TerminalManager to add to history
+                    const terminalCommand = this.terminalManager.parseCommand(command.content);
+                    const outputs = await this.terminalManager.executeCommand(terminalCommand);
+                    
+                    // Display the command and result
+                    this.textChannel.appendLine(`> ${command.content}`);
+                    
+                    // Show result
+                    for (const output of outputs) {
+                        if (output.type === 'stdout') {
+                            this.textChannel.appendLine(output.content);
+                        } else if (output.type === 'stderr') {
+                            this.textChannel.appendLine(`Error: ${output.content}`);
+                        } else if (output.type === 'error') {
+                            this.textChannel.appendLine(`Error: ${output.content}`);
+                        }
+                    }
+                    
+                    this.textChannel.show();
+                    
+                    // Send outputs back to WebView
+                    for (const output of outputs) {
+                        await this.sendMessage({
+                            type: 'terminal_output',
+                            payload: output,
+                            timestamp: Date.now()
+                        });
+                    }
+                } catch (error) {
+                    this.logChannel.error(`Miew command execution failed: ${error}`);
+                    this.textChannel.appendLine(`> ${command.content}`);
+                    this.textChannel.appendLine(`Error: ${error}`);
+                    this.textChannel.show();
+                }
+            } else {
+                // Fallback if TerminalManager is not available
+                this.logChannel.info(`Miew command executed: ${command.content}`);
+                this.textChannel.appendLine(`> ${command.content}`);
+                this.textChannel.show();
+            }
             
         } else if (command.type === 'miew_output') {
-            // Handle miew command result
+            // Handle miew command result (this should not be used anymore, but kept for compatibility)
             if (command.success) {
                 if (command.content && command.content.trim()) {
                     this.textChannel.appendLine(command.content);
@@ -189,6 +229,10 @@ export class WebViewManager {
                 this.textChannel.appendLine(`Error: ${command.content}`);
             }
             this.textChannel.show();
+            
+        } else if (command.type === 'screenshot_data') {
+            // Handle screenshot data and save as PNG file
+            await this.handleScreenshotData(command);
             
         } else if (command.type === 'user_input' && this.terminalManager) {
             try {
@@ -230,12 +274,23 @@ export class WebViewManager {
                     });
                 }
                 
+                // For miew commands, the actual result will be sent via miew_output type
+                // from the WebView's executeMiewScript function
+                
             } catch (error) {
                 this.logChannel.error(`Command execution failed: ${error}`);
                 this.textChannel.appendLine(`> ${command.content}`);
                 this.textChannel.appendLine(`Error: ${error}`);
                 this.textChannel.show();
             }
+        } else if (command.type === 'history_navigation' && this.terminalManager) {
+            // Handle command history navigation
+            const historyCommand = this.terminalManager.navigateHistory(command.direction);
+            await this.sendMessage({
+                type: 'history_result',
+                payload: historyCommand,
+                timestamp: Date.now()
+            });
         } else if (this.terminalManager && command.type === 'terminal') {
             try {
                 const terminalCommand = this.terminalManager.parseCommand(command.command);
@@ -268,17 +323,7 @@ export class WebViewManager {
      * Determine which output channel to use for a given terminal output
      */
     private determineOutputChannel(output: TerminalOutput): vscode.OutputChannel {
-        // Check if content is JSON data
-        if (this.isJsonData(output.content)) {
-            return this.jsonChannel;
-        }
-        
-        // Check if content is XML data
-        if (this.isXmlData(output.content)) {
-            return this.jsonChannel; // Use JSON channel for XML syntax highlighting
-        }
-        
-        // Default to text channel for all other content
+        // Use text channel for all content - JSON data is already formatted
         return this.textChannel;
     }
 
@@ -310,7 +355,6 @@ export class WebViewManager {
         if (command === 'clear') {
             // Clear all output channels
             this.textChannel.clear();
-            this.jsonChannel.clear();
             this.logChannel.clear();
             return 'Terminal cleared';
         }
@@ -346,15 +390,7 @@ export class WebViewManager {
      * Format ccwrite command output
      */
     private formatCcwriteOutput(output: TerminalOutput): string {
-        // ccwrite often returns JSON or structured data
-        if (this.isJsonData(output.content)) {
-            try {
-                const parsed = JSON.parse(output.content);
-                return JSON.stringify(parsed, null, 2);
-            } catch {
-                return output.content;
-            }
-        }
+        // Return content as is - no special formatting
         return output.content;
     }
 
@@ -367,24 +403,51 @@ export class WebViewManager {
     }
 
     /**
-     * Format atom coordinates for better readability
-     * TODO: Commented out to use generic data type formatter
+     * Handle screenshot data and save as PNG file
      */
-    /*
-    private formatAtomCoords(coords: number[][][]): string {
-        let result = 'atomcoords:\n';
-        
-        coords.forEach((step, stepIndex) => {
-            result += `\nStep ${stepIndex + 1}:\n`;
-            step.forEach((atom, atomIndex) => {
-                const [x, y, z] = atom;
-                result += `  Atom ${atomIndex + 1}: [${x.toFixed(6)}, ${y.toFixed(6)}, ${z.toFixed(6)}]\n`;
-            });
-        });
-        
-        return result;
+    private async handleScreenshotData(command: any): Promise<void> {
+        try {
+            if (!command.success || !command.content) {
+                this.textChannel.appendLine('Error: Failed to generate screenshot');
+                this.textChannel.show();
+                return;
+            }
+
+            // Extract base64 data from data URL
+            const dataUrl = command.content;
+            const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
+            
+            // Convert base64 to buffer
+            const buffer = Buffer.from(base64Data, 'base64');
+            
+            // Get workspace folder for saving
+            const workspaceFolders = vscode.workspace.workspaceFolders;
+            if (!workspaceFolders || workspaceFolders.length === 0) {
+                this.textChannel.appendLine('Error: No workspace folder found for saving screenshot');
+                this.textChannel.show();
+                return;
+            }
+            
+            const workspaceFolder = workspaceFolders[0];
+            const filename = command.filename || `screenshot-${Date.now()}.png`;
+            const filePath = vscode.Uri.joinPath(workspaceFolder.uri, filename);
+            
+            // Write file
+            await vscode.workspace.fs.writeFile(filePath, buffer);
+            
+            // Show success message
+            this.textChannel.appendLine(`${filename}`);
+            this.textChannel.show();
+            
+            // Show file in explorer
+            await vscode.commands.executeCommand('revealInExplorer', filePath);
+            
+        } catch (error) {
+            this.logChannel.error(`Screenshot save failed: ${error}`);
+            this.textChannel.appendLine(`Error saving screenshot: ${error}`);
+            this.textChannel.show();
+        }
     }
-    */
 
 
 
@@ -613,6 +676,7 @@ ${scriptContent}
             // Global variables
             let viewer = null;
             let commandExecuting = false; // Flag to control focus restoration
+            let shouldRestoreFocus = false; // Flag to control one-time focus restoration after command execution
             
             // DOM elements
             const miewContainer = document.getElementById('miew-container');
@@ -709,14 +773,31 @@ ${scriptContent}
                         }
                     });
                     
+                    // Arrow key navigation for command history
+                    userInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            sendMessage('command', {
+                                type: 'history_navigation',
+                                direction: 'up'
+                            });
+                        } else if (e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            sendMessage('command', {
+                                type: 'history_navigation',
+                                direction: 'down'
+                            });
+                        }
+                    });
+                    
                     // Add focus event listener to maintain focus (conditional)
                     userInput.addEventListener('blur', () => {
-                        // Only restore focus if command is not executing
-                        if (!commandExecuting) {
+                        // Only restore focus if command is not executing and focus restoration is needed
+                        if (!commandExecuting && shouldRestoreFocus) {
                             setTimeout(() => {
-                                if (document.activeElement !== userInput && 
-                                    !document.activeElement.matches('select, button')) {
+                                if (shouldRestoreFocus) {
                                     userInput.focus();
+                                    shouldRestoreFocus = false; // Reset flag after restoration
                                 }
                             }, 10);
                         }
@@ -745,39 +826,32 @@ ${scriptContent}
                 if (userInput && userInput.value.trim()) {
                     const input = userInput.value.trim();
                     
-                    // Set command executing flag
+                    // Set command executing flag and focus restoration flag
                     commandExecuting = true;
+                    shouldRestoreFocus = true;
                     
-                    // Check if it's a miew command
+                    // Send all commands to VS Code for history tracking and processing
+                    sendMessage('command', {
+                        type: 'user_input',
+                        content: input
+                    });
+                    
+                    // Execute miew script directly in WebView if it's a miew command
                     if (input.toLowerCase().startsWith('miew ')) {
                         const miewCommand = input.substring(5); // Remove 'miew ' prefix
-                        
-                        // Send miew command to VS Code for output channel display
-                        sendMessage('command', {
-                            type: 'miew_input',
-                            content: input,
-                            miewCommand: miewCommand
-                        });
-                        
-                        // Execute miew script in WebView
                         executeMiewScript(miewCommand);
-                    } else {
-                        // Send non-miew commands to VS Code
-                        sendMessage('command', {
-                            type: 'user_input',
-                            content: input
-                        });
                     }
                     
                     // Clear input field
                     userInput.value = '';
                     
-                    // Reset command executing flag after delay and restore focus
+                    // Reset command executing flag after delay and restore focus once
                     setTimeout(() => {
                         commandExecuting = false;
-                        // Restore focus after command execution
-                        if (document.activeElement !== userInput) {
+                        // Restore focus after command execution only if flag is still true
+                        if (shouldRestoreFocus) {
                             userInput.focus();
+                            shouldRestoreFocus = false; // Reset flag after restoration
                         }
                     }, 500);
                 }
@@ -787,6 +861,12 @@ ${scriptContent}
             function executeMiewScript(scriptCommand) {
                 if (viewer && typeof viewer.script === 'function') {
                     try {
+                        // Special handling for screenshot command
+                        if (scriptCommand.toLowerCase().startsWith('screenshot')) {
+                            handleScreenshotCommand(scriptCommand);
+                            return;
+                        }
+                        
                         viewer.script(scriptCommand, 
                             (str) => {
                                 // Success callback
@@ -838,6 +918,48 @@ ${scriptContent}
                 }
             }
             
+            // Handle screenshot command with VS Code file system
+            function handleScreenshotCommand(scriptCommand) {
+                try {
+                    // Parse screenshot command parameters
+                    const parts = scriptCommand.trim().split(/\\s+/);
+                    let width = undefined;
+                    let height = undefined;
+                    
+                    if (parts.length > 1) {
+                        width = parseInt(parts[1]);
+                        if (parts.length > 2) {
+                            height = parseInt(parts[2]);
+                        }
+                    }
+                    
+                    // Generate screenshot using miew
+                    const screenshotData = viewer.screenshot(width, height);
+                    
+                    // Generate filename
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                    const filename = \`screenshot-\${timestamp}.png\`;
+                    
+                    // Send screenshot data to VS Code for file saving
+                    sendMessage('command', {
+                        type: 'screenshot_data',
+                        content: screenshotData,
+                        filename: filename,
+                        success: true
+                    });
+                    
+                } catch (err) {
+                    const errorMsg = \`Screenshot error: \${err.message}\`;
+                    
+                    // Send error to VS Code for output channel display
+                    sendMessage('command', {
+                        type: 'miew_output',
+                        content: errorMsg,
+                        success: false
+                    });
+                }
+            }
+            
             // Initialize VS Code API
             const vscode = acquireVsCodeApi();
             
@@ -863,6 +985,23 @@ ${scriptContent}
                     }
                 }
             }
+            
+            // Handle messages from VS Code
+            window.addEventListener('message', event => {
+                const message = event.data;
+                
+                if (message.type === 'terminal_output') {
+                    // Handle terminal output (existing functionality)
+                    console.log('Terminal output:', message.payload);
+                } else if (message.type === 'history_result') {
+                    // Handle command history result
+                    if (userInput && message.payload !== null) {
+                        userInput.value = message.payload;
+                        // Move cursor to end of input
+                        userInput.setSelectionRange(userInput.value.length, userInput.value.length);
+                    }
+                }
+            });
             
             // Start initialization
             initialize();
@@ -1057,9 +1196,6 @@ ${scriptContent}
         }
         if (this.textChannel) {
             this.textChannel.dispose();
-        }
-        if (this.jsonChannel) {
-            this.jsonChannel.dispose();
         }
         if (this.logChannel) {
             this.logChannel.dispose();

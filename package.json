@@ -52,16 +52,99 @@
         {
           "command": "ccview.openViewer",
           "group": "navigation",
-          "when": "resourceExtname == .log || resourceExtname == .out || resourceExtname == .pdb || resourceExtname == .cif || resourceExtname == .xyz"
+          "when": "resourceExtname =~ /\\.(pdb|cif|xyz|g09|g16|orca|nwo|nw|psi4|gamess|gms|qchem|tmol|molpro|molcas|adf|mopac|xtb|dalton|log|out|txt|dat)$/i"
         }
       ]
     },
+    "configuration": {
+      "title": "CCView",
+      "properties": {
+        "ccview.directFormats": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            ".pdb",
+            ".cif",
+            ".xyz"
+          ],
+          "description": "Molecular structure file formats that can be loaded directly (PDB, CIF, XYZ coordinate files)"
+        },
+        "ccview.chemistryExtensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            ".g09",
+            ".g16",
+            ".orca",
+            ".nwo",
+            ".nw",
+            ".psi4",
+            ".gamess",
+            ".gms",
+            ".qchem",
+            ".tmol",
+            ".molpro",
+            ".molcas",
+            ".adf",
+            ".mopac",
+            ".xtb",
+            ".dalton"
+          ],
+          "description": "Computational chemistry software output files (Gaussian, ORCA, NWChem, etc.)"
+        },
+        "ccview.customExtensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            ".log",
+            ".out",
+            ".txt",
+            ".dat"
+          ],
+          "description": "Additional file extensions to treat as computational chemistry output files (content-based detection will be used)"
+        },
+        "ccview.autoDetectCustomExtensions": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically detect and notify when new computational chemistry files with custom extensions are created"
+        },
+        "ccview.showContextMenuForCustomExtensions": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show 'Open CCView' context menu for files with custom extensions (right-click in file explorer)"
+        }
+      }
+    },
     "files.associations": {
-      "*.log": "plaintext",
-      "*.out": "plaintext",
       "*.pdb": "plaintext",
       "*.cif": "plaintext",
-      "*.xyz": "plaintext"
+      "*.xyz": "plaintext",
+      "*.g09": "plaintext",
+      "*.g16": "plaintext",
+      "*.orca": "plaintext",
+      "*.nwo": "plaintext",
+      "*.nw": "plaintext",
+      "*.psi4": "plaintext",
+      "*.gamess": "plaintext",
+      "*.gms": "plaintext",
+      "*.qchem": "plaintext",
+      "*.tmol": "plaintext",
+      "*.molpro": "plaintext",
+      "*.molcas": "plaintext",
+      "*.adf": "plaintext",
+      "*.mopac": "plaintext",
+      "*.xtb": "plaintext",
+      "*.dalton": "plaintext",
+      "*.log": "plaintext",
+      "*.out": "plaintext",
+      "*.txt": "plaintext",
+      "*.dat": "plaintext"
     }
   },
   "scripts": {
@@ -87,10 +170,7 @@
   "dependencies": {
     "lodash": "^4.17.21",
     "miew": "^0.11.0",
-    "three": "^0.178.0",
-    "xterm": "^5.3.0",
-    "xterm-addon-fit": "^0.8.0",
-    "xterm-addon-web-links": "^0.9.0"
+    "three": "^0.178.0"
   },
   "license": "MIT"
 }

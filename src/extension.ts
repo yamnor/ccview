@@ -15,11 +15,18 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Initialize managers
     const fileDetector = new FileDetector();
+
+
     const pythonManager = new PythonManager();
     const parserInterface = new ParserInterface(pythonManager);
     const webViewManager = new WebViewManager(context.extensionUri);
     const terminalManager = new TerminalManager(parserInterface);
     
+    // Get user settings
+    const config = vscode.workspace.getConfiguration('ccview');
+    const showContextMenuForCustom = config.get<boolean>('showContextMenuForCustomExtensions', false);
+    const autoDetectCustom = config.get<boolean>('autoDetectCustomExtensions', false);
+
     // Set terminal manager in web view manager
     webViewManager.setTerminalManager(terminalManager);
 
@@ -38,7 +45,15 @@ export function activate(context: vscode.ExtensionContext) {
             // Detect file type
             const fileType = await fileDetector.detectFileType(filePath);
             if (!fileType.isValid) {
-                vscode.window.showErrorMessage(fileType.error || 'File format not supported');
+                const ext = filePath.split('.').pop()?.toLowerCase();
+                const customExtensions = fileDetector.getCustomExtensions().map(e => e.substring(1));
+                if (customExtensions.includes(ext || '')) {
+                    vscode.window.showErrorMessage(
+                        'This file does not appear to be a computational chemistry output file. If you believe this is an error, you can try using the "Parse Comp Chem File" command.'
+                    );
+                } else {
+                    vscode.window.showErrorMessage(fileType.error || 'File format not supported');
+                }
                 return;
             }
 
@@ -84,13 +99,17 @@ export function activate(context: vscode.ExtensionContext) {
     const parseFileCommand = vscode.commands.registerCommand('ccview.parseFile', async () => {
         try {
             // Show file picker
+            const directFormats = fileDetector.getDirectFormats().map(ext => ext.substring(1));
+            const chemistryExtensions = fileDetector.getChemistryExtensions().map(ext => ext.substring(1));
+            const customExtensions = fileDetector.getCustomExtensions().map(ext => ext.substring(1));
+            
             const uris = await vscode.window.showOpenDialog({
                 canSelectFiles: true,
                 canSelectFolders: false,
                 canSelectMany: false,
                 filters: {
-                    'Molecular Structure Files': ['pdb', 'cif', 'xyz'],
-                    'Computational Chemistry Files': ['log', 'out']
+                    'Molecular Structure Files': directFormats,
+                    'Computational Chemistry Files': [...chemistryExtensions, ...customExtensions]
                 }
             });
 
@@ -103,7 +122,15 @@ export function activate(context: vscode.ExtensionContext) {
             // Detect file type
             const fileType = await fileDetector.detectFileType(filePath);
             if (!fileType.isValid) {
-                vscode.window.showErrorMessage(fileType.error || 'File format not supported');
+                const ext = filePath.split('.').pop()?.toLowerCase();
+                const customExtensions = fileDetector.getCustomExtensions().map(e => e.substring(1));
+                if (customExtensions.includes(ext || '')) {
+                    vscode.window.showErrorMessage(
+                        'This file does not appear to be a computational chemistry output file. If you believe this is an error, you can try using the "Parse Comp Chem File" command.'
+                    );
+                } else {
+                    vscode.window.showErrorMessage(fileType.error || 'File format not supported');
+                }
                 return;
             }
 
@@ -147,7 +174,15 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     // Register file system watcher for automatic detection
-    const fileWatcher = vscode.workspace.createFileSystemWatcher('**/*.{log,out,pdb,cif,xyz}');
+    const directFormats = fileDetector.getDirectFormats().map(ext => ext.substring(1)).join(',');
+    const chemistryExtensions = fileDetector.getChemistryExtensions().map(ext => ext.substring(1)).join(',');
+    let watcherPattern = `**/*.{${directFormats},${chemistryExtensions}}`;
+    
+    if (autoDetectCustom) {
+        const customExtensions = fileDetector.getCustomExtensions().map(ext => ext.substring(1)).join(',');
+        watcherPattern = `**/*.{${directFormats},${chemistryExtensions},${customExtensions}}`;
+    }
+    const fileWatcher = vscode.workspace.createFileSystemWatcher(watcherPattern);
     
     const onDidCreate = fileWatcher.onDidCreate(async (uri) => {
         // Optional: Auto-detect and show notification for new quantum chemistry files
