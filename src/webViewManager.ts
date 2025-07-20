@@ -440,7 +440,7 @@ export class WebViewManager {
             await vscode.workspace.fs.writeFile(filePath, buffer);
             
             // Show success message
-            this.textChannel.appendLine(`${filename}`);
+            this.textChannel.appendLine(`Screenshot saved: ${filename}`);
             this.textChannel.show();
             
             // Show file in explorer
@@ -941,8 +941,8 @@ ${scriptContent}
                     const screenshotData = viewer.screenshot(width, height);
                     
                     // Generate filename
-                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                    const filename = \`screenshot-\${timestamp}.png\`;
+                    const randomId = Math.random().toString(36).substring(2, 6).toUpperCase();
+                    const filename = \`image-\${randomId}.png\`;
                     
                     // Send screenshot data to VS Code for file saving
                     sendMessage('command', {
