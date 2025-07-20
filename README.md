@@ -236,7 +236,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **[cclib](https://cclib.github.io/)** - Computational chemistry file parsing library
 - **[miew](https://miew.opensource.epam.com/)** - 3D molecular visualization library
-- **[VS Code Extension API](https://code.visualstudio.com/api)** - Extension development framework
 
 ## Support
 
