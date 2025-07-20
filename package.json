@@ -2,7 +2,7 @@
   "name": "ccview",
   "displayName": "CCView - Comp Chem Viewer",
   "description": "Molecular visualization and analysis for VS Code. View computational chemistry output files in 3D, analyze molecular data with integrated terminal commands, and export results in multiple formats.",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "engines": {
     "vscode": "^1.74.0"
   },
