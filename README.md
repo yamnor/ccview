@@ -17,6 +17,8 @@ The main advantage is that you can view your calculation results immediately aft
 
 ## Key Features
 
+![](https://i.gyazo.com/cc1071979ecdb6d32e5d09c403c7d981.gif)
+
 ### 3D Molecular Visualization
 - View molecular structures in 3D with rotation, zoom, and pan controls
 - Support for different molecular representations (ball & stick, licorice, etc.)
